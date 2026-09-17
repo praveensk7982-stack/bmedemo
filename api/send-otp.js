@@ -1,7 +1,10 @@
 import nodemailer from 'nodemailer';
+import { createClient } from '@supabase/supabase-js';
 
-const otpStore = global.otpStore || new Map();
-global.otpStore = otpStore;
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -15,10 +18,17 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, message: 'Invalid email address.' });
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 5 * 60 * 1000;
 
-    otpStore.set(email.toLowerCase().trim(), { otp, expiresAt });
+    const { error: dbError } = await supabase
+      .from('otp_store')
+      .upsert({ email: normalizedEmail, otp, expires_at: expiresAt });
+
+    if (dbError) {
+      throw new Error('Database error: ' + dbError.message);
+    }
 
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
@@ -32,7 +42,7 @@ export default async function handler(req, res) {
 
     const mailOptions = {
       from: `"CareMesh Health" <${process.env.EMAIL_USER}>`,
-      to: email.trim(),
+      to: normalizedEmail,
       subject: 'Your CareMesh Verification Code',
       text: `Your CareMesh verification code is: ${otp}\n\nThis code will expire in 5 minutes.`,
       html: `<div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 520px; margin: auto;">

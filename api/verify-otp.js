@@ -1,5 +1,9 @@
-const otpStore = global.otpStore || new Map();
-global.otpStore = otpStore;
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -14,17 +18,22 @@ export default async function handler(req, res) {
     }
 
     const key = email.toLowerCase().trim();
-    const record = otpStore.get(key);
 
-    if (!record) {
+    const { data: record, error: fetchError } = await supabase
+      .from('otp_store')
+      .select('*')
+      .eq('email', key)
+      .single();
+
+    if (fetchError || !record) {
       return res.status(400).json({
         success: false,
         message: 'No OTP requested for this email address. Please click "Resend OTP".'
       });
     }
 
-    if (Date.now() > record.expiresAt) {
-      otpStore.delete(key);
+    if (Date.now() > record.expires_at) {
+      await supabase.from('otp_store').delete().eq('email', key);
       return res.status(400).json({
         success: false,
         message: 'OTP code has expired. OTP is valid for 5 minutes only. Please request a new code.'
@@ -38,7 +47,7 @@ export default async function handler(req, res) {
       });
     }
 
-    otpStore.delete(key);
+    await supabase.from('otp_store').delete().eq('email', key);
     return res.status(200).json({ success: true, message: 'OTP verified successfully.' });
 
   } catch (error) {
