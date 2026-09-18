@@ -25,6 +25,10 @@ import {
   updateProfile 
 } from '../lib/firebase';
 
+// Backend API base URL (Vercel deployment) — needed so mobile app (Capacitor) 
+// can reach the API even though it loads from local files, not the website domain
+const API_BASE_URL = 'https://bmedemo-agn7.vercel.app';
+
 interface RegisteredAccount {
   fullName: string;
   countryCode: string;
@@ -281,7 +285,7 @@ export const LandingLoginPage: React.FC = () => {
 
     try {
       // Call Backend API to send 6-digit One-Time OTP email via Nodemailer / Gmail SMTP
-      const response = await fetch('/api/send-otp', {
+      const response = await fetch(`${API_BASE_URL}/api/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: trimmedEmail })
@@ -322,7 +326,7 @@ export const LandingLoginPage: React.FC = () => {
 
     try {
       // 1. Verify OTP with Backend API
-      const response = await fetch('/api/verify-otp', {
+      const response = await fetch(`${API_BASE_URL}/api/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: targetOtpEmail, otp: trimmedOtp })
@@ -497,7 +501,6 @@ export const LandingLoginPage: React.FC = () => {
                 <div style={{ flex: 1, lineHeight: 1.4 }}>{successMessage}</div>
               </div>
             )}
-
             {/* STEP 1: LOGIN OR SIGN UP CREDENTIALS ENTRY */}
             {step === 1 ? (
               mode === 'login' ? (
