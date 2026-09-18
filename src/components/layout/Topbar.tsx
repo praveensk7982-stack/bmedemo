@@ -7,6 +7,7 @@ interface TopbarProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
   userName: string;
+  userRole?: string;
 }
 
 // Helper to convert Tamil or alias search terms for hospital search
@@ -28,6 +29,7 @@ export const Topbar: React.FC<TopbarProps> = ({
   searchQuery,
   onSearchChange,
   userName,
+  userRole = 'Patient',
 }) => {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -237,7 +239,7 @@ export const Topbar: React.FC<TopbarProps> = ({
           </span>
           <span>
             <span className="n" style={{ display: 'block' }}>{userName}</span>
-            <span className="r" style={{ display: 'block' }}>Patient</span>
+            <span className="r" style={{ display: 'block' }}>{userRole || 'Patient'}</span>
           </span>
           <ChevronDown size={14} color="#8296ab" />
         </div>

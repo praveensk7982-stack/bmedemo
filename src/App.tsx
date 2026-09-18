@@ -4,6 +4,7 @@ import './App.css';
 
 import { Sidebar } from './components/layout/Sidebar';
 import { Topbar } from './components/layout/Topbar';
+import { AdminLayout } from './components/layout/AdminLayout';
 
 import { HospitalsPage } from './pages/HospitalsPage';
 import { DoctorsPage } from './pages/DoctorsPage';
@@ -36,7 +37,8 @@ import {
   INITIAL_CHAT_MESSAGES
 } from './lib/mockData';
 
-import type { Doctor, Hospital, Appointment, HealthRecord, ChatMessage, UserSettings } from './types';
+import type { Doctor, Hospital, Appointment, HealthRecord, ChatMessage, UserSettings, Review } from './types';
+import { getActivePatientSession, setActivePatientSession } from './lib/userAuth';
 import { CheckCircle2 } from 'lucide-react';
 
 export function AppContent() {
@@ -50,13 +52,34 @@ export function AppContent() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Domain Data State
-  const [hospitals] = useState<Hospital[]>(INITIAL_HOSPITALS);
+  const [hospitals, setHospitals] = useState<Hospital[]>(() => {
+    // Populate hospitals with stored patient reviews from localStorage
+    return INITIAL_HOSPITALS.map((h) => {
+      try {
+        const raw = localStorage.getItem(`hospivio_patient_reviews_${h.id}`);
+        if (raw) {
+          const list: Review[] = JSON.parse(raw);
+          return { ...h, patientReviews: list };
+        }
+      } catch (e) {}
+      return h;
+    });
+  });
+
   const [doctors] = useState<Doctor[]>(INITIAL_DOCTORS);
   const [appointments, setAppointments] = useState<Appointment[]>(INITIAL_APPOINTMENTS);
   const [queueToken, setQueueToken] = useState(INITIAL_QUEUE_TOKEN);
   const [healthRecords, setHealthRecords] = useState<HealthRecord[]>(INITIAL_HEALTH_RECORDS);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(INITIAL_CHAT_MESSAGES);
-  const [userSettings, setUserSettings] = useState<UserSettings>(INITIAL_USER_SETTINGS);
+  const [userSettings, setUserSettings] = useState<UserSettings>(() => {
+    const session = getActivePatientSession();
+    return {
+      ...INITIAL_USER_SETTINGS,
+      name: session.name || INITIAL_USER_SETTINGS.name,
+      email: session.email || INITIAL_USER_SETTINGS.email,
+      phone: session.mobileNumber || INITIAL_USER_SETTINGS.phone
+    };
+  });
 
   // Modals state
   const [bookingModalState, setBookingModalState] = useState<{
@@ -78,6 +101,37 @@ export function AppContent() {
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 3500);
+  };
+
+  // Add Patient Review Handler
+  const handleAddPatientReview = (hospitalId: string, newReview: Review) => {
+    setHospitals((prev) =>
+      prev.map((h) => {
+        if (h.id === hospitalId) {
+          const existingReviews = h.patientReviews || [];
+          const updatedReviews = [newReview, ...existingReviews];
+          
+          // Save to localStorage for persistence
+          try {
+            localStorage.setItem(`hospivio_patient_reviews_${hospitalId}`, JSON.stringify(updatedReviews));
+          } catch (e) {}
+
+          // Calculate new average rating
+          const sum = updatedReviews.reduce((acc, r) => acc + r.rating, 0);
+          const avgRating = Math.round((sum / updatedReviews.length) * 10) / 10;
+
+          return {
+            ...h,
+            rating: avgRating,
+            reviews: `${updatedReviews.length + 10}`,
+            patientReviews: updatedReviews
+          };
+        }
+        return h;
+      })
+    );
+
+    addToast(`⭐ Review published for ${newReview.patientName}! Thank you for your feedback.`);
   };
 
   // Handlers
@@ -153,7 +207,7 @@ export function AppContent() {
       } else if (lower.includes('emergency') || lower.includes('ambulance')) {
         aiReply = "If you are experiencing severe chest pain, breathing difficulty, or trauma, please use our 1-click Emergency Hotline (108) or visit the Emergency page immediately.";
       } else if (lower.includes('report') || lower.includes('download')) {
-        aiReply = "You can view and download all your diagnostic lab reports and prescriptions under the Health Records menu item on the sidebar.";
+        aiReply = "You can view and download diagnostic lab reports and prescriptions under Health Records in the Admin Portal section.";
       }
 
       const botMsg: ChatMessage = {
@@ -184,9 +238,9 @@ export function AppContent() {
     addToast(`Downloading "${record.title}.${record.fileType.toLowerCase()}"...`);
   };
 
-  // Full-screen standalone routes for Landing Login, Admin Login, and Admin Dashboard
+  // Full-screen standalone routes for Landing Login and Admin Login
   const isAuthPage = location.pathname === '/' || location.pathname === '/admin/login';
-  const isAdminDashboard = location.pathname === '/admin/dashboard';
+  const isAdminRoute = location.pathname.startsWith('/admin');
 
   if (isAuthPage) {
     return (
@@ -197,13 +251,29 @@ export function AppContent() {
     );
   }
 
-  if (isAdminDashboard) {
+  // Dedicated Admin Layout for Hospital Admin Portal
+  if (isAdminRoute) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f4f8fb' }}>
+      <AdminLayout>
         <Routes>
           <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+          <Route path="/admin/operations-simulator" element={<OperationsSimulatorPage />} />
+          <Route
+            path="/admin/health-records"
+            element={
+              <HealthRecordsPage
+                records={healthRecords}
+                searchQuery={searchQuery}
+                onUploadRecord={() => setShowUploadModal(true)}
+                onViewRecord={(rec) => addToast(`Viewing preview of "${rec.title}"`)}
+                onDownloadRecord={handleDownloadRecord}
+                onDeleteRecord={handleDeleteRecord}
+              />
+            }
+          />
+          <Route path="/admin/*" element={<Navigate to="/admin/dashboard" replace />} />
         </Routes>
-      </div>
+      </AdminLayout>
     );
   }
 
@@ -217,6 +287,7 @@ export function AppContent() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           userName={userSettings.name}
+          userRole={getActivePatientSession().role || 'Patient'}
         />
 
         <Routes>
@@ -229,6 +300,7 @@ export function AppContent() {
                 searchQuery={searchQuery}
                 onBookAppointment={(h, d) => handleBookAppointmentClick(h, d)}
                 onOpenDoctorProfile={(d) => setSelectedDoctorProfile(d)}
+                onAddPatientReview={handleAddPatientReview}
               />
             }
           />
@@ -309,42 +381,32 @@ export function AppContent() {
             }
           />
           <Route
-            path="/operations-simulator"
-            element={<OperationsSimulatorPage />}
-          />
-          <Route
-            path="/health-records"
-            element={
-              <HealthRecordsPage
-                records={healthRecords}
-                searchQuery={searchQuery}
-                onUploadRecord={() => setShowUploadModal(true)}
-                onViewRecord={(rec) => addToast(`Viewing preview of "${rec.title}"`)}
-                onDownloadRecord={handleDownloadRecord}
-                onDeleteRecord={handleDeleteRecord}
-              />
-            }
-          />
-          <Route
             path="/settings"
             element={
               <SettingsPage
                 settings={userSettings}
                 onSaveSettings={(updated) => {
                   setUserSettings(updated);
+                  setActivePatientSession({
+                    name: updated.name,
+                    email: updated.email,
+                    mobileNumber: updated.phone
+                  });
                   addToast('Settings & profile updated!');
                 }}
                 onLogout={() => {
                   if (window.confirm('Log out of your Hospivio session?')) {
+                    sessionStorage.removeItem('caremesh_patient_session');
                     addToast('Logged out successfully.');
+                    navigate('/');
                   }
                 }}
               />
             }
           />
-          <Route path="/admin" element={<Navigate to="/admin/login" replace />} />
-          <Route path="/admin/login" element={<AdminLoginPage />} />
-          <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+          <Route path="/operations-simulator" element={<Navigate to="/admin/login" replace />} />
+          <Route path="/health-records" element={<Navigate to="/admin/login" replace />} />
+          <Route path="/admin/*" element={<Navigate to="/admin/login" replace />} />
         </Routes>
       </div>
 

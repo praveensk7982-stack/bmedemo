@@ -23,7 +23,10 @@ import {
   Search, 
   Filter, 
   ShieldCheck,
-  Activity
+  Activity,
+  Star,
+  Lock,
+  MessageSquareQuote
 } from 'lucide-react';
 
 export const AdminDashboardPage: React.FC = () => {
@@ -513,6 +516,102 @@ export const AdminDashboardPage: React.FC = () => {
             </table>
           </div>
         </div>
+
+        {/* READ-ONLY PATIENT REVIEWS SECTION FOR ADMIN */}
+        {(() => {
+          const getActiveHospitalReviews = () => {
+            if (!session) return [];
+            try {
+              const raw = localStorage.getItem(`hospivio_patient_reviews_${session.hospitalId}`);
+              if (raw) return JSON.parse(raw);
+            } catch (e) {}
+            return [
+              {
+                id: 'rev-mock-1',
+                hospitalId: session.hospitalId,
+                patientName: 'Ramesh Kumar',
+                rating: 5,
+                date: 'Sep 18, 2026',
+                comment: 'Excellent cardiology consultation and smooth OPD queue movement. Very polite staff.',
+                isVoice: true
+              },
+              {
+                id: 'rev-mock-2',
+                hospitalId: session.hospitalId,
+                patientName: 'Meena Sundaram',
+                rating: 4,
+                date: 'Sep 15, 2026',
+                comment: 'Doctor explained everything clearly in Tamil. Good cleanliness and facility.',
+                originalComment: 'மருத்துவர் மிக தெளிவாக விளக்கினார். நல்ல வசதிகள்.',
+                originalLanguage: 'ta',
+                isVoice: true
+              }
+            ];
+          };
+          const hospitalReviews = getActiveHospitalReviews();
+
+          return (
+            <div style={{ background: '#ffffff', borderRadius: '16px', border: '1px solid #bcd3e4', padding: '20px 24px', marginTop: '24px', boxShadow: '0 4px 16px rgba(15, 39, 68, 0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <MessageSquareQuote size={20} color="var(--teal)" />
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: 'var(--ink)' }}>
+                      Patient Feedback & Reviews ({hospitalReviews.length})
+                    </h2>
+                    <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px' }}>
+                      Authentic patient-submitted voice & text reviews for {session.hospitalName}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Critical Admin Immutability Notice Badge */}
+                <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', color: '#e11d48', padding: '6px 12px', borderRadius: '8px', fontSize: '11.5px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Lock size={13} />
+                  <span>Read-Only Mode: Hospital staff cannot edit, alter, or delete patient reviews</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '14px' }}>
+                {hospitalReviews.map((rev: any) => (
+                  <div key={rev.id} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(140deg, #16a3ae, #0d6e7d)', color: '#fff', fontSize: '11px', fontWeight: 700, display: 'grid', placeItems: 'center' }}>
+                          {rev.patientName.charAt(0).toUpperCase()}
+                        </div>
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>{rev.patientName}</span>
+                        {rev.isVoice && (
+                          <span style={{ fontSize: '10px', background: '#ffe4e6', color: '#e11d48', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                            🎙️ Voice
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: '11px', color: '#64748b' }}>{rev.date}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: '6px' }}>
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} size={12} fill={rev.rating >= i + 1 ? '#f5a623' : 'none'} color="#f5a623" />
+                      ))}
+                      <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--ink)', marginLeft: 4 }}>{rev.rating}.0 / 5.0</span>
+                    </div>
+
+                    <div style={{ fontSize: '12.5px', color: '#334155', lineHeight: 1.45, fontWeight: 500 }}>
+                      "{rev.comment}"
+                    </div>
+
+                    {rev.originalComment && (
+                      <div style={{ marginTop: '8px', fontSize: '11px', background: '#ffffff', border: '1px solid #cbd5e1', padding: '6px 10px', borderRadius: '6px', color: '#475569' }}>
+                        🌐 Original ({rev.originalLanguage === 'ta' ? 'Tamil' : rev.originalLanguage}): "{rev.originalComment}"
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* WALK-IN TOKEN MODAL */}
         {showAddModal && (

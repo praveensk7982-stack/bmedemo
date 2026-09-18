@@ -20,10 +20,14 @@ export interface Doctor {
 
 export interface Review {
   id: string;
+  hospitalId?: string;
   patientName: string;
   rating: number;
   date: string;
   comment: string;
+  originalComment?: string;
+  originalLanguage?: 'en' | 'ta' | string;
+  isVoice?: boolean;
 }
 
 export interface Hospital {
@@ -46,6 +50,7 @@ export interface Hospital {
   doctors: Doctor[];
   imageUrl?: string;
   city: string;
+  patientReviews?: Review[];
 }
 
 export interface Appointment {

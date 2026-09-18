@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Calendar, Clock, User, Building2, Stethoscope, CheckCircle2 } from 'lucide-react';
 import type { Doctor, Hospital } from '../../types';
+import { getActivePatientSession } from '../../lib/userAuth';
 
 interface BookAppointmentModalProps {
   doctor?: Doctor | null;
@@ -46,7 +47,7 @@ export const BookAppointmentModal: React.FC<BookAppointmentModalProps> = ({
 
   const [date, setDate] = useState('2026-09-22');
   const [timeSlot, setTimeSlot] = useState('10:30 AM');
-  const [patientName, setPatientName] = useState('John Doe');
+  const [patientName, setPatientName] = useState(() => getActivePatientSession().name);
   const [reason, setReason] = useState('General Consultation & Checkup');
 
   const timeSlots = ['09:30 AM', '10:30 AM', '11:30 AM', '02:00 PM', '03:30 PM', '05:00 PM'];

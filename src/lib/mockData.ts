@@ -530,8 +530,8 @@ export const INITIAL_HEALTH_RECORDS: HealthRecord[] = [
 ];
 
 export const INITIAL_USER_SETTINGS: UserSettings = {
-  name: "John Doe",
-  email: "john.doe@caremesh.org",
+  name: "Praveen Kumar",
+  email: "praveen.k@caremesh.org",
   phone: "+91 98765 43210",
   bloodGroup: "O+",
   emergencyContact: "+91 98765 00000 (Wife)",

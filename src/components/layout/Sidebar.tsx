@@ -8,10 +8,7 @@ import {
   AlertCircle, 
   MapPin, 
   Sparkles, 
-  Cpu,
-  FileText, 
   Settings,
-  ShieldCheck,
   ChevronRight
 } from 'lucide-react';
 
@@ -29,9 +26,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { name: 'Emergency', path: '/emergency', icon: AlertCircle },
     { name: 'Nearby', path: '/nearby', icon: MapPin },
     { name: 'AI Assistant', path: '/ai-assistant', icon: Sparkles },
-    { name: 'Operations Simulator', path: '/operations-simulator', icon: Cpu },
-    { name: 'Health Records', path: '/health-records', icon: FileText },
-    { name: 'Admin Portal', path: '/admin/login', icon: ShieldCheck },
     { name: 'Settings', path: '/settings', icon: Settings },
   ];
 

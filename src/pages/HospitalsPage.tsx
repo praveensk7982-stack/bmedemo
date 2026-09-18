@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import type { Hospital, Doctor } from '../types';
+import type { Hospital, Doctor, Review } from '../types';
+import { LeaveReviewModal } from '../components/modals/LeaveReviewModal';
 import { 
   Building2, 
   MapPin, 
@@ -29,6 +30,7 @@ interface HospitalsPageProps {
   searchQuery: string;
   onBookAppointment: (hospital: Hospital, doctor?: Doctor) => void;
   onOpenDoctorProfile: (doctor: Doctor) => void;
+  onAddPatientReview?: (hospitalId: string, review: Review) => void;
 }
 
 export interface SpecialistChip {
@@ -392,7 +394,9 @@ export const HospitalsPage: React.FC<HospitalsPageProps> = ({
   searchQuery,
   onBookAppointment,
   onOpenDoctorProfile,
+  onAddPatientReview,
 }) => {
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const [selectedCity, setSelectedCity] = useState('Chennai');
   const [selectedDistance, setSelectedDistance] = useState('10 km');
   const [sortBy, setSortBy] = useState<'default' | 'wait' | 'rating' | 'distance'>('default');
@@ -1058,7 +1062,87 @@ export const HospitalsPage: React.FC<HospitalsPageProps> = ({
               ))}
             </div>
           </div>
+
+          {/* Patient Reviews & Ratings Section */}
+          <div className="sec" style={{ marginTop: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '16px', paddingBottom: '24px' }}>
+            <div className="sec-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: 'var(--ink)' }}>Patient Reviews & Ratings</h3>
+                <div style={{ fontSize: '12px', color: 'var(--ink-2)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Star size={13} fill="var(--star)" color="var(--star)" />
+                  <b>{activeHospital.rating.toFixed(1)} / 5.0</b> ({activeHospital.reviews} verified reviews)
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setShowReviewModal(true)}
+                style={{ fontSize: '11.5px', padding: '6px 12px', background: 'var(--teal)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+              >
+                <Star size={13} fill="#fff" />
+                Leave a Review
+              </button>
+            </div>
+
+            {/* List of Patient Reviews */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {(!activeHospital.patientReviews || activeHospital.patientReviews.length === 0) ? (
+                <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', fontSize: '12.5px', color: '#64748b', textAlign: 'center', border: '1px dashed #cbd5e1' }}>
+                  No recent patient reviews submitted yet. Click <b>"Leave a Review"</b> to record a voice or text review!
+                </div>
+              ) : (
+                activeHospital.patientReviews.map((rev) => (
+                  <div key={rev.id} style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '14px', boxShadow: '0 2px 6px rgba(0,0,0,0.02)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(140deg, #16a3ae, #0d6e7d)', color: '#fff', fontSize: '11px', fontWeight: 700, display: 'grid', placeItems: 'center' }}>
+                          {rev.patientName.charAt(0).toUpperCase()}
+                        </div>
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--ink)' }}>{rev.patientName}</span>
+                        {rev.isVoice && (
+                          <span style={{ fontSize: '10px', background: '#ffe4e6', color: '#e11d48', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                            🎙️ Voice Review
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>{rev.date}</div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: '8px' }}>
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} size={12} fill={rev.rating >= i + 1 ? '#f5a623' : 'none'} color="#f5a623" />
+                      ))}
+                      <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--ink)', marginLeft: 4 }}>{rev.rating}.0</span>
+                    </div>
+
+                    <div style={{ fontSize: '12.5px', color: '#334155', lineHeight: 1.45, fontWeight: 500 }}>
+                      {rev.comment}
+                    </div>
+
+                    {rev.originalComment && (
+                      <div style={{ marginTop: '8px', fontSize: '11px', background: '#f1f5f9', padding: '6px 10px', borderRadius: '6px', color: '#475569', borderLeft: '3px solid #16a3ae' }}>
+                        🌐 <b>Original ({rev.originalLanguage === 'ta' ? 'Tamil' : rev.originalLanguage}):</b> "{rev.originalComment}"
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </aside>
+      )}
+
+      {/* Leave Review Modal */}
+      {showReviewModal && activeHospital && (
+        <LeaveReviewModal
+          hospital={activeHospital}
+          onClose={() => setShowReviewModal(false)}
+          onSuccess={(newReview) => {
+            if (onAddPatientReview) {
+              onAddPatientReview(activeHospital.id, newReview);
+            }
+          }}
+        />
       )}
     </div>
   );
