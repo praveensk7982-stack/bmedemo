@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import type { Doctor } from '../types';
+import type { Doctor, Review } from '../types';
+import { InlineReviewForm } from '../components/reviews/InlineReviewForm';
 import { 
   Star, 
   MapPin, 
@@ -27,6 +28,7 @@ export const DoctorsPage: React.FC<DoctorsPageProps> = ({
   const [selectedSpec, setSelectedSpec] = useState('All');
   const [selectedHospital, setSelectedHospital] = useState('All');
   const [selectedAvailability, setSelectedAvailability] = useState('All');
+  const [activeReviewDoctorId, setActiveReviewDoctorId] = useState<string | null>(null);
 
   // Unique specializations list
   const specializations = ['All', ...Array.from(new Set(doctors.map((d) => d.spec)))];
@@ -149,6 +151,16 @@ export const DoctorsPage: React.FC<DoctorsPageProps> = ({
 
               <div className="doctor-actions">
                 <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => setActiveReviewDoctorId((prev) => (prev === doc.id ? null : doc.id))}
+                  style={{ fontSize: '11px', padding: '6px 10px', color: 'var(--teal)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <Star size={12} fill="var(--star)" color="var(--star)" />
+                  {activeReviewDoctorId === doc.id ? 'Close Form' : 'Leave Review'}
+                </button>
+
+                <button
                   className="btn ghost"
                   onClick={() => onViewProfile(doc)}
                 >
@@ -161,6 +173,27 @@ export const DoctorsPage: React.FC<DoctorsPageProps> = ({
                   <Calendar size={13} /> Book Appointment
                 </button>
               </div>
+
+              {/* Inline Expandable Review Form for Doctor Card */}
+              {activeReviewDoctorId === doc.id && (
+                <div style={{ padding: '0 12px 12px' }}>
+                  <InlineReviewForm
+                    targetId={doc.id}
+                    targetName={doc.name}
+                    targetType="doctor"
+                    onClose={() => setActiveReviewDoctorId(null)}
+                    onSuccess={(newReview) => {
+                      try {
+                        const raw = localStorage.getItem(`hospivio_doctor_reviews_${doc.id}`);
+                        const existing: Review[] = raw ? JSON.parse(raw) : [];
+                        const updated = [newReview, ...existing];
+                        localStorage.setItem(`hospivio_doctor_reviews_${doc.id}`, JSON.stringify(updated));
+                      } catch (e) {}
+                      setActiveReviewDoctorId(null);
+                    }}
+                  />
+                </div>
+              )}
             </div>
           ))
         )}

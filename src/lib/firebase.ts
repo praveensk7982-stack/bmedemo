@@ -5,7 +5,8 @@ import {
   signInWithPhoneNumber,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  fetchSignInMethodsForEmail as rawFetchSignInMethodsForEmail
 } from 'firebase/auth';
 import type { ConfirmationResult } from 'firebase/auth';
 
@@ -23,6 +24,37 @@ const firebaseConfig = {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
+
+export async function fetchSignInMethodsForEmail(authObj: any, email: string): Promise<string[]> {
+  if (typeof rawFetchSignInMethodsForEmail === 'function') {
+    try {
+      const res = await rawFetchSignInMethodsForEmail(authObj, email);
+      if (Array.isArray(res)) return res;
+    } catch (e) {
+      console.warn('Firebase SDK fetchSignInMethodsForEmail warning:', e);
+    }
+  }
+
+  // Fallback: Query Firebase Identity Toolkit API directly
+  try {
+    const url = `https://identitytoolkit.googleapis.com/v1/accounts:createAuthUri?key=${firebaseConfig.apiKey}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier: email, continueUri: 'http://localhost' })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      const methods = data.allProviders || data.signinMethods || [];
+      return Array.isArray(methods) ? methods : [];
+    }
+  } catch (err) {
+    console.warn('Firebase REST API createAuthUri fallback error:', err);
+  }
+
+  return [];
+}
+
 export { 
   RecaptchaVerifier, 
   signInWithPhoneNumber,

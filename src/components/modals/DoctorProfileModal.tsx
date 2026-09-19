@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X, Star, Calendar, Award, GraduationCap, MapPin, CheckCircle2, Clock } from 'lucide-react';
-import type { Doctor } from '../../types';
+import type { Doctor, Review } from '../../types';
 import { MOCK_REVIEWS } from '../../lib/mockData';
+import { InlineReviewForm } from '../reviews/InlineReviewForm';
 
 interface DoctorProfileModalProps {
   doctor: Doctor;
@@ -14,6 +15,27 @@ export const DoctorProfileModal: React.FC<DoctorProfileModalProps> = ({
   onClose,
   onBookAppointment,
 }) => {
+  const [showInlineForm, setShowInlineForm] = useState(false);
+  const [doctorReviews, setDoctorReviews] = useState<Review[]>(() => {
+    try {
+      const raw = localStorage.getItem(`hospivio_doctor_reviews_${doctor.id}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return MOCK_REVIEWS;
+  });
+
+  const handleAddReview = (newReview: Review) => {
+    const updated = [newReview, ...doctorReviews];
+    setDoctorReviews(updated);
+    try {
+      localStorage.setItem(`hospivio_doctor_reviews_${doctor.id}`, JSON.stringify(updated));
+    } catch (e) {}
+    setShowInlineForm(false);
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '680px' }}>
@@ -30,8 +52,6 @@ export const DoctorProfileModal: React.FC<DoctorProfileModalProps> = ({
             <div style={{ width: 80, height: 80, borderRadius: '50%', overflow: 'hidden', background: '#dbe6f1', flex: '0 0 80px', border: '3px solid #eef4f9' }}>
               <svg viewBox="0 0 64 64" width="100%" height="100%">
                 <rect width="64" height="64" fill="#e4edf5" />
-                <path d="M6 64c2-16 13-22 26-22s24 6 26 22z" fill="#ffffff" />
-                <path d="M18 46c4 10 24 10 28 0l-6-4H24z" fill="#cfe6ec" />
                 <circle cx="32" cy="26" r="12" fill={doctor.sex === 'f' ? '#e8bfa0' : '#dcae8c'} />
                 <circle cx="27.5" cy="27" r="1.5" fill="#2b2b2b" />
                 <circle cx="36.5" cy="27" r="1.5" fill="#2b2b2b" />
@@ -61,7 +81,7 @@ export const DoctorProfileModal: React.FC<DoctorProfileModalProps> = ({
                   <Award size={14} color="var(--teal)" /> {doctor.experienceYears} Years Exp.
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Star size={14} fill="var(--star)" color="var(--star)" /> {doctor.rating} ({doctor.reviewsCount} reviews)
+                  <Star size={14} fill="var(--star)" color="var(--star)" /> {doctor.rating} ({doctorReviews.length + 200} reviews)
                 </span>
               </div>
             </div>
@@ -105,20 +125,55 @@ export const DoctorProfileModal: React.FC<DoctorProfileModalProps> = ({
 
           {/* Patient Reviews */}
           <div>
-            <h4 style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: 700, color: 'var(--ink)' }}>Recent Patient Reviews</h4>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: 'var(--ink)' }}>Recent Patient Reviews</h4>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setShowInlineForm((prev) => !prev)}
+                style={{ fontSize: '11px', padding: '4px 10px', background: 'var(--teal)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              >
+                <Star size={12} fill="#fff" />
+                {showInlineForm ? 'Close Form' : 'Leave a Review'}
+              </button>
+            </div>
+
+            {/* Inline Review Form (Accordion expand/collapse) */}
+            {showInlineForm && (
+              <InlineReviewForm
+                targetId={doctor.id}
+                targetName={doctor.name}
+                targetType="doctor"
+                onClose={() => setShowInlineForm(false)}
+                onSuccess={handleAddReview}
+              />
+            )}
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {MOCK_REVIEWS.map((rev) => (
+              {doctorReviews.map((rev) => (
                 <div key={rev.id} style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '10px', padding: '12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <span style={{ fontWeight: 600, fontSize: '12.5px', color: 'var(--ink)' }}>{rev.patientName}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontWeight: 600, fontSize: '12.5px', color: 'var(--ink)' }}>{rev.patientName}</span>
+                      {rev.isVoice && (
+                        <span style={{ fontSize: '10px', background: '#ffe4e6', color: '#e11d48', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>
+                          🎙️ Voice Review
+                        </span>
+                      )}
+                    </div>
                     <span style={{ fontSize: '11px', color: 'var(--ink-3)' }}>{rev.date}</span>
                   </div>
                   <div style={{ display: 'flex', gap: 2, color: 'var(--star)', marginBottom: '6px' }}>
                     {Array.from({ length: rev.rating }).map((_, i) => (
-                      <Star key={i} size={12} fill="var(--star)" />
+                      <Star key={i} size={12} fill="var(--star)" color="var(--star)" />
                     ))}
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--ink-2)' }}>{rev.comment}</div>
+                  {rev.originalComment && (
+                    <div style={{ marginTop: '6px', fontSize: '10.5px', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', color: '#475569' }}>
+                      🌐 Original ({rev.originalLanguage === 'ta' ? 'Tamil' : rev.originalLanguage}): "{rev.originalComment}"
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

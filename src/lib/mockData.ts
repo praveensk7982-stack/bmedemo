@@ -19,6 +19,28 @@ export const INITIAL_HOSPITALS: Hospital[] = [
     accent: "#1f5f9e",
     city: "Chennai",
     alert: { title: "Emergency Case Arrived", text: "Waiting time may increase by 10 mins. Critical cases are being prioritized." },
+    patientReviews: [
+      {
+        id: "rev-apollo-1",
+        hospitalId: "apollo",
+        patientName: "Ramesh Kumar",
+        rating: 5,
+        date: "Sep 18, 2026",
+        comment: "Excellent cardiology consultation and smooth OPD queue movement. Very polite staff.",
+        isVoice: true
+      },
+      {
+        id: "rev-apollo-2",
+        hospitalId: "apollo",
+        patientName: "Meena Sundaram",
+        rating: 4,
+        date: "Sep 15, 2026",
+        comment: "Doctor explained everything clearly in Tamil. Good cleanliness and facility.",
+        originalComment: "மருத்துவர் மிக தெளிவாக விளக்கினார். நல்ல வசதிகள்.",
+        originalLanguage: "ta",
+        isVoice: true
+      }
+    ],
     doctors: [
       {
         id: "doc-1",
@@ -112,6 +134,26 @@ export const INITIAL_HOSPITALS: Hospital[] = [
     accent: "#a35c3a",
     city: "Chennai",
     alert: null,
+    patientReviews: [
+      {
+        id: "rev-miot-1",
+        hospitalId: "miot",
+        patientName: "Suresh Pillai",
+        rating: 5,
+        date: "Sep 17, 2026",
+        comment: "Outstanding orthopedic department. Minimal wait time and expert surgeons.",
+        isVoice: true
+      },
+      {
+        id: "rev-miot-2",
+        hospitalId: "miot",
+        patientName: "Revathi N.",
+        rating: 5,
+        date: "Sep 12, 2026",
+        comment: "Very clean premises and well organized token system.",
+        isVoice: false
+      }
+    ],
     doctors: [
       {
         id: "doc-5",
@@ -169,6 +211,17 @@ export const INITIAL_HOSPITALS: Hospital[] = [
     accent: "#2d6f8e",
     city: "Chennai",
     alert: null,
+    patientReviews: [
+      {
+        id: "rev-srm-1",
+        hospitalId: "srm",
+        patientName: "Lakshmi Devi",
+        rating: 5,
+        date: "Sep 16, 2026",
+        comment: "Great experience with the gynecology department and helpful nursing staff.",
+        isVoice: false
+      }
+    ],
     doctors: [
       {
         id: "doc-7",
@@ -226,6 +279,17 @@ export const INITIAL_HOSPITALS: Hospital[] = [
     accent: "#8a6f3d",
     city: "Chennai",
     alert: { title: "High Outpatient Volume", text: "Free outpatient registration counters are active until 01:00 PM." },
+    patientReviews: [
+      {
+        id: "rev-mmc-1",
+        hospitalId: "mmc",
+        patientName: "Balamurugan R.",
+        rating: 5,
+        date: "Sep 16, 2026",
+        comment: "Prompt emergency care and general surgery consultation. Highly recommended.",
+        isVoice: true
+      }
+    ],
     doctors: [
       {
         id: "doc-9",
@@ -283,6 +347,17 @@ export const INITIAL_HOSPITALS: Hospital[] = [
     accent: "#1e7a4b",
     city: "Chennai",
     alert: null,
+    patientReviews: [
+      {
+        id: "rev-sims-1",
+        hospitalId: "sims",
+        patientName: "Nithya Swaminathan",
+        rating: 5,
+        date: "Sep 14, 2026",
+        comment: "Punctual appointment slots and modern diagnostic equipment.",
+        isVoice: false
+      }
+    ],
     doctors: [
       {
         id: "doc-11",

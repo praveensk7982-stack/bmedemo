@@ -282,6 +282,54 @@ export default defineConfig({
             return
           }
 
+          // Endpoint 5: Reset Password
+          if (req.url === '/api/reset-password' && req.method === 'POST') {
+            let body = ''
+            req.on('data', chunk => { body += chunk })
+            req.on('end', async () => {
+              try {
+                const { email, newPassword } = JSON.parse(body || '{}')
+                if (!email || !newPassword || newPassword.length < 6) {
+                  res.statusCode = 400
+                  res.setHeader('Content-Type', 'application/json')
+                  return res.end(JSON.stringify({ success: false, message: 'Valid email and new password (minimum 6 characters) required.' }))
+                }
+
+                const normalizedEmail = email.toLowerCase().trim()
+                const passwordHash = bcrypt.hashSync(newPassword, 10)
+
+                if (supabase) {
+                  console.log(`[Supabase Reset Password] Updating password hash for: ${normalizedEmail}`)
+                  const { data, error } = await supabase
+                    .from('patients')
+                    .update({ password_hash: passwordHash })
+                    .eq('email', normalizedEmail)
+                    .select()
+
+                  if (error) {
+                    console.error('[Supabase Reset Password Error]:', JSON.stringify(error, null, 2))
+                    res.statusCode = 500
+                    res.setHeader('Content-Type', 'application/json')
+                    return res.end(JSON.stringify({ success: false, message: 'Database password update failed: ' + error.message, supabaseError: error }))
+                  }
+
+                  res.statusCode = 200
+                  res.setHeader('Content-Type', 'application/json')
+                  return res.end(JSON.stringify({ success: true, message: 'Password reset successfully in Supabase.', patient: data ? data[0] : null }))
+                } else {
+                  res.statusCode = 200
+                  res.setHeader('Content-Type', 'application/json')
+                  return res.end(JSON.stringify({ success: true, message: 'Password reset locally.' }))
+                }
+              } catch (err: any) {
+                res.statusCode = 500
+                res.setHeader('Content-Type', 'application/json')
+                return res.end(JSON.stringify({ success: false, message: err.message || 'Password reset failed.' }))
+              }
+            })
+            return
+          }
+
           next()
         })
       }

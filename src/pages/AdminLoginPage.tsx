@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ADMIN_HOSPITALS, verifyHospitalPassword } from '../lib/adminAuth';
-import { Building2, Lock, ShieldCheck, Key, AlertCircle, ArrowRight, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { Building2, Lock, ShieldCheck, Key, AlertCircle, ArrowRight, Eye, EyeOff, CheckCircle2, ArrowLeft } from 'lucide-react';
 
 export const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -229,6 +229,31 @@ export const AdminLoginPage: React.FC = () => {
               )}
             </button>
           </form>
+
+          {/* BACK TO PATIENT LOGIN LINK */}
+          <div style={{ marginTop: '18px', textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--teal)',
+                fontSize: '13.5px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 8px',
+                borderRadius: '6px',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <ArrowLeft size={16} />
+              <span>Back to Patient Login</span>
+            </button>
+          </div>
 
           {/* Security & Scoping Guarantee Footer */}
           <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--line)', fontSize: '11px', color: 'var(--ink-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textAlign: 'center' }}>

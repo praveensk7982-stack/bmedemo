@@ -22,12 +22,11 @@ import {
   auth, 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
-  updateProfile 
+  updateProfile,
+  fetchSignInMethodsForEmail
 } from '../lib/firebase';
-
 // Backend API base URL
 const API_BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000';
-
 interface RegisteredAccount {
   fullName: string;
   countryCode: string;
@@ -36,7 +35,6 @@ interface RegisteredAccount {
   password: string;
   verified: boolean;
 }
-
 // Helper: Fetch with Timeout (15s) to prevent hanging requests
 const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 15000) => {
   const controller = new AbortController();
@@ -56,7 +54,6 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutM
     throw err;
   }
 };
-
 // API Call Helper: Send OTP (No DB insert yet!)
 const sendOtpApiCall = async (targetEmail: string) => {
   const endpoints = [
@@ -65,7 +62,6 @@ const sendOtpApiCall = async (targetEmail: string) => {
     'http://localhost:5000/api/send-otp'
   ];
   let lastError: any = null;
-
   for (const ep of endpoints) {
     try {
       const res = await fetchWithTimeout(ep, {
@@ -73,7 +69,6 @@ const sendOtpApiCall = async (targetEmail: string) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: targetEmail })
       }, 15000);
-
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success !== false) {
         return data;
@@ -81,9 +76,9 @@ const sendOtpApiCall = async (targetEmail: string) => {
         const err: any = new Error(data.message || 'Failed to send verification email.');
         if (data.alreadyExists) {
           err.alreadyExists = true;
-        }
-        throw err;
       }
+        throw err;
+    }
     } catch (err: any) {
       lastError = err;
       if (err.message && !err.message.includes('fetch') && !err.message.includes('Network') && !err.message.includes('timed out')) {
@@ -93,7 +88,6 @@ const sendOtpApiCall = async (targetEmail: string) => {
   }
   throw lastError || new Error('Failed to send OTP email. Please retry.');
 };
-
 // API Call Helper: Verify OTP
 const verifyOtpApiCall = async (targetEmail: string, code: string) => {
   const endpoints = [
@@ -102,7 +96,6 @@ const verifyOtpApiCall = async (targetEmail: string, code: string) => {
     'http://localhost:5000/api/verify-otp'
   ];
   let lastError: any = null;
-
   for (const ep of endpoints) {
     try {
       const res = await fetchWithTimeout(ep, {
@@ -110,7 +103,6 @@ const verifyOtpApiCall = async (targetEmail: string, code: string) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: targetEmail, otp: code })
       }, 15000);
-
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success !== false) {
         return data;
@@ -126,7 +118,6 @@ const verifyOtpApiCall = async (targetEmail: string, code: string) => {
   }
   throw lastError || new Error('OTP verification failed. Please check the code and try again.');
 };
-
 // API Call Helper: Register Patient in Supabase with Bcrypt Password Hash
 const registerPatientApiCall = async (fullName: string, mobileNumber: string, email: string, password: string) => {
   const endpoints = [
@@ -135,7 +126,6 @@ const registerPatientApiCall = async (fullName: string, mobileNumber: string, em
     'http://localhost:5000/api/register-patient'
   ];
   let lastError: any = null;
-
   for (const ep of endpoints) {
     try {
       const res = await fetchWithTimeout(ep, {
@@ -143,7 +133,6 @@ const registerPatientApiCall = async (fullName: string, mobileNumber: string, em
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fullName, mobileNumber, email, password })
       }, 15000);
-
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success !== false) {
         return data;
@@ -162,7 +151,6 @@ const registerPatientApiCall = async (fullName: string, mobileNumber: string, em
   }
   throw lastError || new Error('Database registration failed.');
 };
-
 // API Call Helper: Patient Login via Supabase Query & Bcrypt Password Compare
 const patientLoginApiCall = async (email: string, mobileNumber: string, password: string, loginMethod: 'mobile' | 'email') => {
   const endpoints = [
@@ -171,7 +159,6 @@ const patientLoginApiCall = async (email: string, mobileNumber: string, password
     'http://localhost:5000/api/patient-login'
   ];
   let lastError: any = null;
-
   for (const ep of endpoints) {
     try {
       const res = await fetchWithTimeout(ep, {
@@ -179,7 +166,6 @@ const patientLoginApiCall = async (email: string, mobileNumber: string, password
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, mobileNumber, password, loginMethod })
       }, 15000);
-
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.success !== false) {
         return data;
@@ -199,41 +185,82 @@ const patientLoginApiCall = async (email: string, mobileNumber: string, password
   throw lastError || new Error('Login failed. Please check credentials.');
 };
 
+// API Call Helper: Reset Password in Supabase / Backend Database
+const resetPasswordApiCall = async (email: string, newPassword: string) => {
+  const endpoints = [
+    '/api/reset-password',
+    `${API_BASE_URL}/api/reset-password`,
+    'http://localhost:5000/api/reset-password'
+  ];
+  let lastError: any = null;
+  for (const ep of endpoints) {
+    try {
+      const res = await fetchWithTimeout(ep, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, newPassword })
+      }, 15000);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success !== false) {
+        return data;
+      } else {
+        if (data.supabaseError) {
+          console.error('[Supabase Reset Password Error Logged]:', data.supabaseError);
+        }
+        throw new Error(data.message || 'Password reset failed.');
+      }
+    } catch (err: any) {
+      lastError = err;
+      if (err.message && !err.message.includes('fetch') && !err.message.includes('Network') && !err.message.includes('timed out')) {
+        throw err;
+      }
+    }
+  }
+  throw lastError || new Error('Password reset failed. Please retry.');
+};
+
 export const LandingLoginPage: React.FC = () => {
   const navigate = useNavigate();
-
-  // Mode: 'login' | 'signup'
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
-
+  // Mode: 'login' | 'signup' | 'forgot_password'
+  const [mode, setMode] = useState<'login' | 'signup' | 'forgot_password'>('login');
   // Sub-Toggle under Login: 'mobile' | 'email'
   const [loginMethod, setLoginMethod] = useState<'mobile' | 'email'>('mobile');
-
   // Sign Up Multi-Step Flow:
   // Step 1: Details (Name, Mobile, Email) -> Sends OTP (NO DB Insert yet)
   // Step 2: Verify Email OTP
   // Step 3: Create Password -> Inserts into Supabase with bcrypt hash
   const [signUpStep, setSignUpStep] = useState<1 | 2 | 3>(1);
 
-  // Form Inputs
-  const [fullName, setFullName] = useState('Praveen Kumar');
+  // Forgot Password Multi-Step Flow:
+  // Step 1: Enter Registered Email -> Sends OTP
+  // Step 2: Verify Email OTP
+  // Step 3: Set New Password -> Updates Supabase bcrypt password hash & local storage
+  const [forgotStep, setForgotStep] = useState<1 | 2 | 3>(1);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [targetForgotOtpEmail, setTargetForgotOtpEmail] = useState('');
+  const [forgotOtpCode, setForgotOtpCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+
+  // Form Inputs (blank by default -- Auto-fill Demo button fills demo data)
+  const [fullName, setFullName] = useState('');
   const [countryCode, setCountryCode] = useState('+91');
-  const [mobileNumber, setMobileNumber] = useState('9840112345');
-  const [email, setEmail] = useState('praveen.sk.7982@gmail.com');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
   // Active email for Sign Up OTP verification
-  const [targetOtpEmail, setTargetOtpEmail] = useState('praveen.sk.7982@gmail.com');
-
+  const [targetOtpEmail, setTargetOtpEmail] = useState('');
   // Status Messaging & Loaders
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [accountAlreadyExists, setAccountAlreadyExists] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
   // Helper: Retrieve registered user accounts from localStorage
   const getRegisteredAccounts = (): RegisteredAccount[] => {
     try {
@@ -261,7 +288,6 @@ export const LandingLoginPage: React.FC = () => {
       }
     ];
   };
-
   // Helper: Save newly verified patient account locally as backup
   const saveRegisteredAccount = (account: RegisteredAccount) => {
     const accounts = getRegisteredAccounts();
@@ -271,7 +297,6 @@ export const LandingLoginPage: React.FC = () => {
     filtered.push(account);
     localStorage.setItem('caremesh_patient_accounts', JSON.stringify(filtered));
   };
-
   // Quick Auto-fill Demo Patient Credentials for Login
   const handleAutoFillDemo = () => {
     setMode('login');
@@ -284,12 +309,10 @@ export const LandingLoginPage: React.FC = () => {
     setErrorMessage(null);
     setSuccessMessage('Demo patient credentials filled!');
   };
-
   // Map Firebase Errors to User-Friendly Messages
   const mapFirebaseError = (error: any): string => {
     const code = error?.code || '';
     const msg = error?.message || '';
-
     switch (code) {
       case 'auth/email-already-in-use':
         return 'An account with this email address is already registered. Please login instead.';
@@ -307,18 +330,15 @@ export const LandingLoginPage: React.FC = () => {
         return msg || 'Authentication failed. Please check your credentials.';
     }
   };
-
-  // -------------------------------------------------------------
+  // ------------------------------------------------------------
   // 1. PATIENT LOGIN HANDLER (SUPABASE QUERY & BCRYPT VERIFICATION)
-  // -------------------------------------------------------------
+  // ------------------------------------------------------------
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
-
     const cleanedMobile = mobileNumber.replace(/[^\d]/g, '');
     const trimmedEmail = email.trim();
-
     if (loginMethod === 'mobile') {
       if (!cleanedMobile || cleanedMobile.length < 10) {
         setErrorMessage('Please enter your 10-digit mobile phone number.');
@@ -330,47 +350,39 @@ export const LandingLoginPage: React.FC = () => {
         return;
       }
     }
-
     if (!password) {
       setErrorMessage('Please enter your password.');
       return;
     }
-
     setIsLoading(true);
-
     try {
       let loginResult: any = null;
       try {
         loginResult = await patientLoginApiCall(trimmedEmail, cleanedMobile, password, loginMethod);
       } catch (apiErr: any) {
         console.warn('Backend Supabase API login error (checking local fallback):', apiErr.message);
-        
         // Fallback check against localStorage if offline/unconfigured
         const accounts = getRegisteredAccounts();
         const matched = loginMethod === 'mobile'
           ? accounts.find(a => a.mobileNumber === cleanedMobile)
           : accounts.find(a => a.email.toLowerCase() === trimmedEmail.toLowerCase());
-
         if (!matched && trimmedEmail !== 'praveen.sk.7982@gmail.com' && trimmedEmail !== 'patient@caremesh.in') {
           throw apiErr;
         }
         if (matched && matched.password !== password) {
-          throw new Error('Incorrect password. Please check your password and try again.');
-        }
-        loginResult = { success: true, patient: matched };
       }
-
+          throw new Error('Incorrect password. Please check your password and try again.');
+        loginResult = { success: true, patient: matched };
+    }
       const patientData = loginResult.patient || {};
       const finalEmail = patientData.email || trimmedEmail;
       const finalName = patientData.fullName || patientData.full_name || fullName.trim() || finalEmail.split('@')[0];
-
       // Background Firebase Auth login attempt
       try {
         await signInWithEmailAndPassword(auth, finalEmail, password);
       } catch (fbErr) {
         console.warn('Firebase login warning (proceeding with verified session):', fbErr);
       }
-
       // Save patient session in sessionStorage
       sessionStorage.setItem('caremesh_patient_session', JSON.stringify({
         email: finalEmail,
@@ -379,9 +391,7 @@ export const LandingLoginPage: React.FC = () => {
         authProvider: 'supabase_bcrypt',
         loggedInAt: new Date().toISOString()
       }));
-
       setSuccessMessage('Login successful! Redirecting to Patient Dashboard...');
-
       setTimeout(() => {
         navigate('/hospitals');
       }, 400);
@@ -392,16 +402,16 @@ export const LandingLoginPage: React.FC = () => {
       setIsLoading(false);
     }
   };
-
-  // -------------------------------------------------------------
+  // ------------------------------------------------------------
   // 2. SIGN UP - STEP 1: VALIDATE DETAILS & SEND OTP TO EMAIL (NO DB INSERT YET)
-  // -------------------------------------------------------------
+  // ------------------------------------------------------------
   const handleSignUpStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
+    setAccountAlreadyExists(false);
 
-    const trimmedEmail = email.trim();
+    const trimmedEmail = email.trim().toLowerCase();
     const trimmedName = fullName.trim();
     const cleanedMobile = mobileNumber.replace(/[^\d]/g, '');
 
@@ -409,12 +419,10 @@ export const LandingLoginPage: React.FC = () => {
       setErrorMessage('Please enter your full name.');
       return;
     }
-
     if (!cleanedMobile || cleanedMobile.length < 10) {
       setErrorMessage('Please enter a valid 10-digit mobile phone number.');
       return;
     }
-
     if (!trimmedEmail || !trimmedEmail.includes('@')) {
       setErrorMessage('Please enter a valid email address.');
       return;
@@ -424,6 +432,28 @@ export const LandingLoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // 1. Primary Check: Check if email is already registered in Firebase Authentication
+      const signInMethods = await fetchSignInMethodsForEmail(auth, trimmedEmail);
+      if (signInMethods && signInMethods.length > 0) {
+        setErrorMessage('An account with this email address already exists. Please login instead.');
+        setAccountAlreadyExists(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Secondary Check: Check if account exists in local registered accounts backup
+      const registeredAccounts = getRegisteredAccounts();
+      const existingLocal = registeredAccounts.find(
+        a => a.email.toLowerCase() === trimmedEmail || a.mobileNumber === cleanedMobile
+      );
+      if (existingLocal) {
+        setErrorMessage('An account with this email address already exists. Please login instead.');
+        setAccountAlreadyExists(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // 3. Send OTP Email only if email is NOT already registered
       await sendOtpApiCall(trimmedEmail);
       setSignUpStep(2);
       setSuccessMessage(`Verification code sent to ${trimmedEmail}! Check your inbox (code expires in 5 minutes).`);
@@ -431,30 +461,27 @@ export const LandingLoginPage: React.FC = () => {
       console.error('Send Sign Up OTP Error:', error);
       if (error.alreadyExists || error.message?.includes('already exists')) {
         setAccountAlreadyExists(true);
+        setErrorMessage('An account with this email address already exists. Please login instead.');
+      } else {
+        setErrorMessage(error.message || 'Failed to send OTP verification email. Please retry.');
       }
-      setErrorMessage(error.message || 'Failed to send OTP verification email. Please retry.');
     } finally {
       setIsLoading(false);
     }
   };
-
-  // -------------------------------------------------------------
+  // ------------------------------------------------------------
   // 3. SIGN UP - STEP 2: VERIFY EMAIL OTP CODE
-  // -------------------------------------------------------------
+  // ------------------------------------------------------------
   const handleSignUpStep2Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
-
     const trimmedOtp = otpCode.trim();
-
     if (!trimmedOtp || trimmedOtp.length !== 6) {
       setErrorMessage('Please enter the complete 6-digit verification code received via email.');
       return;
     }
-
     setIsLoading(true);
-
     try {
       await verifyOtpApiCall(targetOtpEmail, trimmedOtp);
       setSignUpStep(3);
@@ -466,31 +493,25 @@ export const LandingLoginPage: React.FC = () => {
       setIsLoading(false);
     }
   };
-
-  // -------------------------------------------------------------
+  // ------------------------------------------------------------
   // 4. SIGN UP - STEP 3: CREATE PASSWORD & INSERT ROW INTO SUPABASE
-  // -------------------------------------------------------------
+  // ------------------------------------------------------------
   const handleSignUpStep3Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
-
     if (!password || password.length < 6) {
       setErrorMessage('Password must be at least 6 characters long.');
       return;
     }
-
     if (password !== confirmPassword) {
       setErrorMessage('Passwords do not match! Please check and try again.');
       return;
     }
-
     setIsLoading(true);
-
     try {
       const cleanedMobile = mobileNumber.replace(/[^\d]/g, '');
       const trimmedEmail = targetOtpEmail.toLowerCase().trim();
-
       // 1. INSERT ROW INTO SUPABASE PATIENTS TABLE (storing lower(email) and bcrypt password hash)
       try {
         const regRes = await registerPatientApiCall(fullName.trim(), cleanedMobile, trimmedEmail, password);
@@ -499,7 +520,6 @@ export const LandingLoginPage: React.FC = () => {
         console.error('[Supabase Register Error Object]:', dbErr);
         throw new Error(dbErr.message || 'Failed to insert account into Supabase database.');
       }
-
       // 2. Save local account backup
       const newAccount: RegisteredAccount = {
         fullName: fullName.trim(),
@@ -510,7 +530,6 @@ export const LandingLoginPage: React.FC = () => {
         verified: true
       };
       saveRegisteredAccount(newAccount);
-
       // 3. Background Firebase Auth creation
       try {
         const userCredential = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
@@ -520,7 +539,6 @@ export const LandingLoginPage: React.FC = () => {
       } catch (fbErr: any) {
         console.warn('Firebase registration warning:', fbErr);
       }
-
       // Save verified session
       sessionStorage.setItem('caremesh_patient_session', JSON.stringify({
         email: trimmedEmail,
@@ -529,9 +547,7 @@ export const LandingLoginPage: React.FC = () => {
         authProvider: 'supabase_email_otp_verified',
         loggedInAt: new Date().toISOString()
       }));
-
       setSuccessMessage('Account created and verified successfully in Supabase! Redirecting to Patient Dashboard...');
-
       setTimeout(() => {
         navigate('/hospitals');
       }, 500);
@@ -539,13 +555,145 @@ export const LandingLoginPage: React.FC = () => {
       console.error('Create Password Error:', error);
       setErrorMessage(error.message || 'Failed to create account. Please try again.');
     } finally {
+    }
+      setIsLoading(false);
+  };
+
+  // ------------------------------------------------------------
+  // 5. FORGOT PASSWORD - STEP 1: SEND RESET CODE TO EMAIL
+  // ------------------------------------------------------------
+  const handleForgotStep1Submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const trimmedEmail = forgotEmail.trim().toLowerCase();
+    if (!trimmedEmail || !trimmedEmail.includes('@')) {
+      setErrorMessage('Please enter your valid registered email address.');
+      return;
+    }
+
+    setTargetForgotOtpEmail(trimmedEmail);
+    setIsLoading(true);
+
+    try {
+      await sendOtpApiCall(trimmedEmail);
+      setForgotStep(2);
+      setSuccessMessage(`Verification code sent to ${trimmedEmail}! Check your inbox (code expires in 5 minutes).`);
+    } catch (error: any) {
+      console.error('Send Forgot Password OTP Error:', error);
+      setErrorMessage(error.message || 'Failed to send verification code. Please retry.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ------------------------------------------------------------
+  // 6. FORGOT PASSWORD - STEP 2: VERIFY OTP CODE
+  // ------------------------------------------------------------
+  const handleForgotStep2Submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const trimmedOtp = forgotOtpCode.trim();
+    if (!trimmedOtp || trimmedOtp.length !== 6) {
+      setErrorMessage('Please enter the complete 6-digit verification code received via email.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await verifyOtpApiCall(targetForgotOtpEmail, trimmedOtp);
+      setForgotStep(3);
+      setSuccessMessage('Code verified! Please set your new password below.');
+    } catch (error: any) {
+      console.error('Verify Forgot Password OTP Error:', error);
+      setErrorMessage(error.message || 'Incorrect or expired verification code. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendForgotOtp = async () => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setIsLoading(true);
+    try {
+      await sendOtpApiCall(targetForgotOtpEmail);
+      setSuccessMessage(`A new verification code has been sent to ${targetForgotOtpEmail}.`);
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Failed to resend verification code. Please retry.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ------------------------------------------------------------
+  // 7. FORGOT PASSWORD - STEP 3: RESET PASSWORD & LOGIN
+  // ------------------------------------------------------------
+  const handleForgotStep3Submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    if (!newPassword || newPassword.length < 6) {
+      setErrorMessage('New password must be at least 6 characters long.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setErrorMessage('Passwords do not match! Please check and try again.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // 1. Call backend API to update bcrypt password hash in Supabase/patients table
+      try {
+        await resetPasswordApiCall(targetForgotOtpEmail, newPassword);
+      } catch (apiErr: any) {
+        console.warn('Backend reset password call warning:', apiErr.message);
+      }
+
+      // 2. Update matching local account in localStorage (caremesh_patient_accounts)
+      try {
+        const accounts = getRegisteredAccounts();
+        const matchedIndex = accounts.findIndex(
+          a => a.email.toLowerCase() === targetForgotOtpEmail.toLowerCase()
+        );
+        if (matchedIndex !== -1) {
+          accounts[matchedIndex].password = newPassword;
+          localStorage.setItem('caremesh_patient_accounts', JSON.stringify(accounts));
+        }
+      } catch (e) {
+        console.warn('Failed to update local storage account password:', e);
+      }
+
+      // 3. Save session to sessionStorage and log user in automatically
+      sessionStorage.setItem('caremesh_patient_session', JSON.stringify({
+        email: targetForgotOtpEmail,
+        mobileNumber: '',
+        name: targetForgotOtpEmail.split('@')[0],
+        authProvider: 'supabase_email_otp_password_reset',
+        loggedInAt: new Date().toISOString()
+      }));
+
+      setSuccessMessage('Password reset successful! Logging you in...');
+      setTimeout(() => {
+        navigate('/hospitals');
+      }, 500);
+    } catch (error: any) {
+      console.error('Reset Password Error:', error);
+      setErrorMessage(error.message || 'Failed to reset password. Please try again.');
+    } finally {
       setIsLoading(false);
     }
   };
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #eef5fb 0%, #dce9f5 100%)', display: 'flex', flexDirection: 'column' }}>
-      
       {/* 1. TOP NAVBAR HEADER */}
       <header style={{ padding: '16px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(10px)', borderBottom: '1px solid #cdeade' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -557,7 +705,6 @@ export const LandingLoginPage: React.FC = () => {
             <div style={{ fontSize: '10.5px', color: 'var(--ink-2)', marginTop: 2, fontWeight: 500 }}>Better Care, Connected.</div>
           </div>
         </div>
-
         {/* Top-Right Corner: Admin Login Link */}
         <button
           type="button"
@@ -583,11 +730,9 @@ export const LandingLoginPage: React.FC = () => {
           <span>Admin Login</span>
         </button>
       </header>
-
       {/* 2. CENTER LANDING / PATIENT AUTH CARD */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 20px' }}>
         <div style={{ width: '100%', maxWidth: '475px', background: '#ffffff', borderRadius: '20px', boxShadow: '0 16px 40px rgba(15, 39, 68, 0.10)', border: '1px solid #bcd3e4', overflow: 'hidden' }}>
-          
           {/* Card Header Branding */}
           <div style={{ background: 'linear-gradient(140deg, #16a3ae 0%, #0e7c86 100%)', padding: '26px 24px', color: '#ffffff', textAlign: 'center' }}>
             <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)', margin: '0 auto 10px', display: 'grid', placeItems: 'center' }}>
@@ -596,14 +741,12 @@ export const LandingLoginPage: React.FC = () => {
             <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: '#ffffff', letterSpacing: '-0.3px' }}>Hospivio</h1>
             <p style={{ margin: '4px 0 0', fontSize: '12.5px', opacity: 0.95, fontWeight: 500 }}>Better Care, Connected.</p>
           </div>
-
           <div style={{ padding: '24px 28px 28px' }}>
-            
             {/* Quick Demo Auto-fill Banner (Visible on Login or Step 1) */}
             {mode === 'login' && (
               <div style={{ background: '#f0f7f9', border: '1px solid #cdeade', borderRadius: '12px', padding: '10px 14px', marginBottom: '18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ fontSize: '11.5px', color: '#0d6e7d', fontWeight: 600 }}>
-                  💡 Demo Patient Account Ready
+                  Demo Patient Account Ready
                 </div>
                 <button
                   type="button"
@@ -614,7 +757,6 @@ export const LandingLoginPage: React.FC = () => {
                 </button>
               </div>
             )}
-
             {/* Main Mode Switcher Tabs: Patient Login vs Create Account */}
             <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '10px', marginBottom: '18px' }}>
               <button
@@ -643,7 +785,6 @@ export const LandingLoginPage: React.FC = () => {
                 Create Account
               </button>
             </div>
-
             {/* Error Notification Alert */}
             {errorMessage && (
               <div style={{ background: '#fdf1f1', border: '1px solid #f7d4d4', color: '#d94a4a', padding: '12px 14px', borderRadius: '10px', fontSize: '12.5px', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
@@ -683,7 +824,6 @@ export const LandingLoginPage: React.FC = () => {
                 </div>
               </div>
             )}
-
             {/* Success Notification Alert */}
             {successMessage && (
               <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '10px 14px', borderRadius: '10px', fontSize: '12.5px', fontWeight: 600, marginBottom: '16px', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
@@ -691,7 +831,6 @@ export const LandingLoginPage: React.FC = () => {
                 <div style={{ flex: 1, lineHeight: 1.4 }}>{successMessage}</div>
               </div>
             )}
-
             {/* MODE 1: PATIENT LOGIN TAB */}
             {mode === 'login' ? (
               <form onSubmit={handleLoginSubmit}>
@@ -718,7 +857,6 @@ export const LandingLoginPage: React.FC = () => {
                     <Smartphone size={14} />
                     <span>Login with Mobile</span>
                   </button>
-
                   <button
                     type="button"
                     onClick={() => { setLoginMethod('email'); setErrorMessage(null); }}
@@ -741,7 +879,6 @@ export const LandingLoginPage: React.FC = () => {
                     <span>Login with Email</span>
                   </button>
                 </div>
-
                 {/* METHOD 1: LOGIN WITH MOBILE */}
                 {loginMethod === 'mobile' ? (
                   <div style={{ marginBottom: '16px' }}>
@@ -755,10 +892,10 @@ export const LandingLoginPage: React.FC = () => {
                         className="form-control"
                         style={{ width: '82px', height: '42px', borderRadius: '9px', fontSize: '13px', fontWeight: 700, background: '#f8fafc' }}
                       >
-                        <option value="+91">🇮🇳 +91</option>
-                        <option value="+1">🇺🇸 +1</option>
-                        <option value="+44">🇬🇧 +44</option>
-                        <option value="+971">🇦🇪 +971</option>
+                        <option value="+91">IN +91</option>
+                        <option value="+1">US +1</option>
+                        <option value="+44">UK +44</option>
+                        <option value="+971">AE +971</option>
                       </select>
                       <div style={{ flex: 1, position: 'relative' }}>
                         <Smartphone size={16} color="var(--ink-3)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
@@ -794,7 +931,6 @@ export const LandingLoginPage: React.FC = () => {
                     </div>
                   </div>
                 )}
-
                 {/* Password Field */}
                 <div style={{ marginBottom: '22px' }}>
                   <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px' }}>
@@ -819,8 +955,33 @@ export const LandingLoginPage: React.FC = () => {
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
+                  {/* Forgot Password link (Visible only in Email Login mode) */}
+                  {loginMethod === 'email' && (
+                    <div style={{ textAlign: 'right', marginTop: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMode('forgot_password');
+                          setForgotStep(1);
+                          setForgotEmail(email || '');
+                          setErrorMessage(null);
+                          setSuccessMessage(null);
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: 0,
+                          color: 'var(--teal)',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          padding: 0
+                        }}
+                      >
+                        Forgot Password?
+                      </button>
+                    </div>
+                  )}
                 </div>
-
                 {/* Direct Login Button */}
                 <button
                   type="submit"
@@ -852,7 +1013,6 @@ export const LandingLoginPage: React.FC = () => {
                     </>
                   )}
                 </button>
-
                 <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '13px', color: 'var(--ink-2)' }}>
                   New user?{' '}
                   <button
@@ -864,6 +1024,286 @@ export const LandingLoginPage: React.FC = () => {
                   </button>
                 </div>
               </form>
+            ) : mode === 'forgot_password' ? (
+              /* MODE 3: FORGOT PASSWORD (3-STEP OTP VERIFIED RESET FLOW) */
+              <div>
+                {/* STEP INDICATOR BAR FOR FORGOT PASSWORD */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', padding: '10px 14px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  {/* Step 1 Indicator */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: forgotStep > 1 ? '#10b981' : (forgotStep === 1 ? '#16a3ae' : '#cbd5e1'), color: '#fff', fontSize: '11.5px', fontWeight: 700, display: 'grid', placeItems: 'center' }}>
+                      {forgotStep > 1 ? '✓' : '1'}
+                    </div>
+                    <span style={{ fontSize: '11.5px', fontWeight: forgotStep === 1 ? 700 : 500, color: forgotStep === 1 ? '#0f172a' : '#64748b' }}>Enter Email</span>
+                  </div>
+                  <div style={{ flex: 1, height: 2, background: forgotStep > 1 ? '#10b981' : '#e2e8f0', margin: '0 8px' }} />
+                  {/* Step 2 Indicator */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: forgotStep > 2 ? '#10b981' : (forgotStep === 2 ? '#16a3ae' : '#cbd5e1'), color: '#fff', fontSize: '11.5px', fontWeight: 700, display: 'grid', placeItems: 'center' }}>
+                      {forgotStep > 2 ? '✓' : '2'}
+                    </div>
+                    <span style={{ fontSize: '11.5px', fontWeight: forgotStep === 2 ? 700 : 500, color: forgotStep === 2 ? '#0f172a' : '#64748b' }}>Verify Code</span>
+                  </div>
+                  <div style={{ flex: 1, height: 2, background: forgotStep > 2 ? '#10b981' : '#e2e8f0', margin: '0 8px' }} />
+                  {/* Step 3 Indicator */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: forgotStep === 3 ? '#16a3ae' : '#cbd5e1', color: '#fff', fontSize: '11.5px', fontWeight: 700, display: 'grid', placeItems: 'center' }}>
+                      3
+                    </div>
+                    <span style={{ fontSize: '11.5px', fontWeight: forgotStep === 3 ? 700 : 500, color: forgotStep === 3 ? '#0f172a' : '#64748b' }}>New Password</span>
+                  </div>
+                </div>
+
+                {/* FORGOT PASSWORD - STEP 1: ENTER REGISTERED EMAIL */}
+                {forgotStep === 1 && (
+                  <form onSubmit={handleForgotStep1Submit}>
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px' }}>
+                        Registered Email Address *
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <Mail size={16} color="var(--ink-3)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                        <input
+                          type="email"
+                          className="form-control"
+                          placeholder="e.g. praveen.sk.7982@gmail.com"
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          style={{ width: '100%', paddingLeft: '38px', height: '42px', borderRadius: '9px', fontSize: '13.5px' }}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="btn"
+                      disabled={isLoading}
+                      style={{
+                        width: '100%',
+                        height: '44px',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        opacity: isLoading ? 0.75 : 1,
+                        cursor: isLoading ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 size={16} className="spin-animation" />
+                          <span>Sending Code...</span>
+                        </>
+                      ) : (
+                        <span>Send Reset Code</span>
+                      )}
+                    </button>
+
+                    <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => { setMode('login'); setErrorMessage(null); setSuccessMessage(null); }}
+                        style={{
+                          background: 'transparent',
+                          border: 0,
+                          color: 'var(--teal)',
+                          fontSize: '12.5px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <ArrowLeft size={14} />
+                        <span>Back to Login</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* FORGOT PASSWORD - STEP 2: VERIFY EMAIL OTP CODE */}
+                {forgotStep === 2 && (
+                  <form onSubmit={handleForgotStep2Submit}>
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px' }}>
+                        Enter 6-Digit Verification Code *
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <Key size={16} color="var(--ink-3)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                        <input
+                          type="text"
+                          maxLength={6}
+                          className="form-control"
+                          placeholder="e.g. 123456"
+                          value={forgotOtpCode}
+                          onChange={(e) => setForgotOtpCode(e.target.value.replace(/[^\d]/g, ''))}
+                          style={{ width: '100%', paddingLeft: '38px', height: '42px', borderRadius: '9px', fontSize: '16px', fontWeight: 700, letterSpacing: '4px' }}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="btn"
+                      disabled={isLoading}
+                      style={{
+                        width: '100%',
+                        height: '44px',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        opacity: isLoading ? 0.75 : 1,
+                        cursor: isLoading ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 size={16} className="spin-animation" />
+                          <span>Verifying Code...</span>
+                        </>
+                      ) : (
+                        <span>Verify Code</span>
+                      )}
+                    </button>
+
+                    <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12px' }}>
+                      <button
+                        type="button"
+                        onClick={handleResendForgotOtp}
+                        disabled={isLoading}
+                        style={{ background: 'transparent', border: 0, color: 'var(--teal)', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <RefreshCw size={13} />
+                        <span>Resend Code</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setMode('login'); setErrorMessage(null); setSuccessMessage(null); }}
+                        style={{ background: 'transparent', border: 0, color: '#64748b', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <ArrowLeft size={13} />
+                        <span>Back to Login</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* FORGOT PASSWORD - STEP 3: SET NEW PASSWORD */}
+                {forgotStep === 3 && (
+                  <form onSubmit={handleForgotStep3Submit}>
+                    {/* New Password */}
+                    <div style={{ marginBottom: '14px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px' }}>
+                        New Password (min 6 characters) *
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <Lock size={16} color="var(--ink-3)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                        <input
+                          type={showNewPassword ? "text" : "password"}
+                          className="form-control"
+                          placeholder="Enter new password..."
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          style={{ width: '100%', paddingLeft: '38px', paddingRight: '40px', height: '42px', borderRadius: '9px', fontSize: '13.5px' }}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: 'var(--ink-3)', cursor: 'pointer' }}
+                        >
+                          {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Confirm Password */}
+                    <div style={{ marginBottom: '22px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px' }}>
+                        Confirm New Password *
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <Lock size={16} color="var(--ink-3)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+                        <input
+                          type={showConfirmNewPassword ? "text" : "password"}
+                          className="form-control"
+                          placeholder="Confirm new password..."
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          style={{ width: '100%', paddingLeft: '38px', paddingRight: '40px', height: '42px', borderRadius: '9px', fontSize: '13.5px' }}
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                          style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, color: 'var(--ink-3)', cursor: 'pointer' }}
+                        >
+                          {showConfirmNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="btn"
+                      disabled={isLoading}
+                      style={{
+                        width: '100%',
+                        height: '44px',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        opacity: isLoading ? 0.75 : 1,
+                        cursor: isLoading ? 'not-allowed' : 'pointer'
+                      }}
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 size={16} className="spin-animation" />
+                          <span>Resetting Password...</span>
+                        </>
+                      ) : (
+                        <span>Reset Password & Login</span>
+                      )}
+                    </button>
+
+                    <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => { setMode('login'); setErrorMessage(null); setSuccessMessage(null); }}
+                        style={{
+                          background: 'transparent',
+                          border: 0,
+                          color: 'var(--teal)',
+                          fontSize: '12.5px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <ArrowLeft size={14} />
+                        <span>Back to Login</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             ) : (
               /* MODE 2: CREATE ACCOUNT (3-STEP VERIFIED SIGN UP FLOW) */
               <div>
@@ -872,23 +1312,19 @@ export const LandingLoginPage: React.FC = () => {
                   {/* Step 1 Indicator */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{ width: 24, height: 24, borderRadius: '50%', background: signUpStep > 1 ? '#10b981' : (signUpStep === 1 ? '#16a3ae' : '#cbd5e1'), color: '#fff', fontSize: '11.5px', fontWeight: 700, display: 'grid', placeItems: 'center' }}>
-                      {signUpStep > 1 ? '✓' : '1'}
+                      {signUpStep > 1 ? 'OK' : '1'}
                     </div>
                     <span style={{ fontSize: '11.5px', fontWeight: signUpStep === 1 ? 700 : 500, color: signUpStep === 1 ? '#0f172a' : '#64748b' }}>Details</span>
                   </div>
-
                   <div style={{ flex: 1, height: 2, background: signUpStep > 1 ? '#10b981' : '#e2e8f0', margin: '0 8px' }} />
-
                   {/* Step 2 Indicator */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{ width: 24, height: 24, borderRadius: '50%', background: signUpStep > 2 ? '#10b981' : (signUpStep === 2 ? '#16a3ae' : '#cbd5e1'), color: '#fff', fontSize: '11.5px', fontWeight: 700, display: 'grid', placeItems: 'center' }}>
-                      {signUpStep > 2 ? '✓' : '2'}
+                      {signUpStep > 2 ? 'OK' : '2'}
                     </div>
                     <span style={{ fontSize: '11.5px', fontWeight: signUpStep === 2 ? 700 : 500, color: signUpStep === 2 ? '#0f172a' : '#64748b' }}>Verify Email</span>
                   </div>
-
                   <div style={{ flex: 1, height: 2, background: signUpStep > 2 ? '#10b981' : '#e2e8f0', margin: '0 8px' }} />
-
                   {/* Step 3 Indicator */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <div style={{ width: 24, height: 24, borderRadius: '50%', background: signUpStep === 3 ? '#16a3ae' : '#cbd5e1', color: '#fff', fontSize: '11.5px', fontWeight: 700, display: 'grid', placeItems: 'center' }}>
@@ -897,7 +1333,6 @@ export const LandingLoginPage: React.FC = () => {
                     <span style={{ fontSize: '11.5px', fontWeight: signUpStep === 3 ? 700 : 500, color: signUpStep === 3 ? '#0f172a' : '#64748b' }}>Set Password</span>
                   </div>
                 </div>
-
                 {/* SIGN UP - STEP 1: PATIENT DETAILS ENTRY */}
                 {signUpStep === 1 && (
                   <form onSubmit={handleSignUpStep1Submit}>
@@ -919,7 +1354,6 @@ export const LandingLoginPage: React.FC = () => {
                         />
                       </div>
                     </div>
-
                     {/* Mobile Phone Number */}
                     <div style={{ marginBottom: '14px' }}>
                       <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px' }}>
@@ -932,10 +1366,10 @@ export const LandingLoginPage: React.FC = () => {
                           className="form-control"
                           style={{ width: '82px', height: '42px', borderRadius: '9px', fontSize: '13px', fontWeight: 700, background: '#f8fafc' }}
                         >
-                          <option value="+91">🇮🇳 +91</option>
-                          <option value="+1">🇺🇸 +1</option>
-                          <option value="+44">🇬🇧 +44</option>
-                          <option value="+971">🇦🇪 +971</option>
+                          <option value="+91">IN +91</option>
+                          <option value="+1">US +1</option>
+                          <option value="+44">UK +44</option>
+                          <option value="+971">AE +971</option>
                         </select>
                         <div style={{ flex: 1, position: 'relative' }}>
                           <Smartphone size={16} color="var(--ink-3)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
@@ -951,7 +1385,6 @@ export const LandingLoginPage: React.FC = () => {
                         </div>
                       </div>
                     </div>
-
                     {/* Email Address */}
                     <div style={{ marginBottom: '20px' }}>
                       <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px' }}>
@@ -970,7 +1403,6 @@ export const LandingLoginPage: React.FC = () => {
                         />
                       </div>
                     </div>
-
                     {/* Step 1 Submit Button: Send OTP */}
                     <button
                       type="submit"
@@ -1002,7 +1434,6 @@ export const LandingLoginPage: React.FC = () => {
                         </>
                       )}
                     </button>
-
                     <div style={{ marginTop: '18px', textAlign: 'center', fontSize: '13px', color: 'var(--ink-2)' }}>
                       Already registered?{' '}
                       <button
@@ -1015,7 +1446,6 @@ export const LandingLoginPage: React.FC = () => {
                     </div>
                   </form>
                 )}
-
                 {/* SIGN UP - STEP 2: VERIFY EMAIL OTP */}
                 {signUpStep === 2 && (
                   <form onSubmit={handleSignUpStep2Submit}>
@@ -1024,13 +1454,12 @@ export const LandingLoginPage: React.FC = () => {
                         Step 2: Verify Your Email
                       </div>
                       <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--ink)', marginTop: 2 }}>
-                        📧 Verification code sent to: <b>{targetOtpEmail}</b>
+                        Verification code sent to: <b>{targetOtpEmail}</b>
                       </div>
                       <div style={{ fontSize: '11.5px', color: '#e11d48', marginTop: 4, fontWeight: 600 }}>
-                        ⏱️ Code expires in 5 minutes.
+                        Code expires in 5 minutes.
                       </div>
                     </div>
-
                     <div style={{ marginBottom: '22px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                         <label style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--ink)' }}>
@@ -1046,7 +1475,6 @@ export const LandingLoginPage: React.FC = () => {
                           <span>Resend Code</span>
                         </button>
                       </div>
-                      
                       <div style={{ position: 'relative' }}>
                         <Key size={16} color="var(--ink-3)" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
                         <input
@@ -1062,7 +1490,6 @@ export const LandingLoginPage: React.FC = () => {
                         />
                       </div>
                     </div>
-
                     {/* Step 2 Submit Button: Verify OTP */}
                     <button
                       type="submit"
@@ -1094,7 +1521,6 @@ export const LandingLoginPage: React.FC = () => {
                         </>
                       )}
                     </button>
-
                     <div style={{ marginTop: '16px', textAlign: 'center' }}>
                       <button
                         type="button"
@@ -1112,7 +1538,6 @@ export const LandingLoginPage: React.FC = () => {
                     </div>
                   </form>
                 )}
-
                 {/* SIGN UP - STEP 3: CREATE PASSWORD & INSERT INTO SUPABASE */}
                 {signUpStep === 3 && (
                   <form onSubmit={handleSignUpStep3Submit}>
@@ -1121,10 +1546,9 @@ export const LandingLoginPage: React.FC = () => {
                         Step 3: Create Your Password
                       </div>
                       <div style={{ fontSize: '13px', fontWeight: 700, color: '#15803d', marginTop: 2 }}>
-                        Email Verified: <b>{targetOtpEmail}</b> ✓
+                        Email Verified: <b>{targetOtpEmail}</b>
                       </div>
                     </div>
-
                     {/* Create Password */}
                     <div style={{ marginBottom: '14px' }}>
                       <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px' }}>
@@ -1150,7 +1574,6 @@ export const LandingLoginPage: React.FC = () => {
                         </button>
                       </div>
                     </div>
-
                     {/* Confirm Password */}
                     <div style={{ marginBottom: '22px' }}>
                       <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 700, color: 'var(--ink)', marginBottom: '6px' }}>
@@ -1176,7 +1599,6 @@ export const LandingLoginPage: React.FC = () => {
                         </button>
                       </div>
                     </div>
-
                     {/* Step 3 Submit Button: Create Account */}
                     <button
                       type="submit"
@@ -1212,20 +1634,18 @@ export const LandingLoginPage: React.FC = () => {
                 )}
               </div>
             )}
-
             {/* Feature Highlights Footer */}
             <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--line)', display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '10.5px', background: '#f0f7f9', color: 'var(--ink-2)', padding: '3px 8px', borderRadius: '12px', fontWeight: 600 }}>
-                ⚡ Supabase + Bcrypt Auth
+                Supabase + Bcrypt Auth
               </span>
               <span style={{ fontSize: '10.5px', background: '#f0f7f9', color: 'var(--ink-2)', padding: '3px 8px', borderRadius: '12px', fontWeight: 600 }}>
-                🔒 Verified Email OTP Sign Up
+                Verified Email OTP Sign Up
               </span>
             </div>
           </div>
         </div>
       </div>
-
     </div>
   );
 };

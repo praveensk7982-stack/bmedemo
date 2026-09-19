@@ -19,4 +19,5 @@ declare module 'firebase/auth' {
   export function createUserWithEmailAndPassword(auth: any, email: string, password: string): Promise<any>;
   export function signInWithEmailAndPassword(auth: any, email: string, password: string): Promise<any>;
   export function updateProfile(user: any, profile: { displayName?: string; photoURL?: string }): Promise<void>;
+  export function fetchSignInMethodsForEmail(auth: any, email: string): Promise<string[]>;
 }

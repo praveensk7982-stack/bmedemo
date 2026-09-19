@@ -42,7 +42,7 @@ export const Topbar: React.FC<TopbarProps> = ({
   // Independent Global Speech Recognition State
   const [isListeningGlobal, setIsListeningGlobal] = useState(false);
   const [globalSpeechError, setGlobalSpeechError] = useState<string | null>(null);
-  const [globalLang, setGlobalLang] = useState<'ta-IN' | 'en-IN'>('ta-IN');
+  const [globalLang, setGlobalLang] = useState<'ta-IN' | 'en-IN' | 'hi-IN'>('ta-IN');
 
   const notifications = [
     { id: 1, title: "Appointment Reminder", text: "Dr. S. Ramesh Babu consultation on Sep 20, 10:30 AM", time: "10m ago" },
@@ -121,7 +121,7 @@ export const Topbar: React.FC<TopbarProps> = ({
             setInputVal(e.target.value);
             onSearchChange(e.target.value);
           }}
-          placeholder={isListeningGlobal ? "Listening... Speak now in Tamil or English" : "Search hospitals, doctors, departments, or records..."}
+          placeholder={isListeningGlobal ? "Listening... Speak now in Tamil, English, or Hindi" : "Search hospitals, doctors, departments, or records..."}
           style={{ paddingLeft: '36px', paddingRight: '160px', height: '40px' }}
         />
 
@@ -129,17 +129,17 @@ export const Topbar: React.FC<TopbarProps> = ({
         <div style={{ position: 'absolute', right: '5px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '4px', zIndex: 5 }}>
           <button
             type="button"
-            onClick={() => setGlobalLang(globalLang === 'ta-IN' ? 'en-IN' : 'ta-IN')}
-            title={`Switch Global Voice Language (Current: ${globalLang === 'ta-IN' ? 'Tamil' : 'English'})`}
+            onClick={() => setGlobalLang(prev => prev === 'ta-IN' ? 'en-IN' : prev === 'en-IN' ? 'hi-IN' : 'ta-IN')}
+            title={`Switch Global Voice Language (Current: ${globalLang === 'ta-IN' ? 'Tamil' : globalLang === 'hi-IN' ? 'Hindi' : 'English'})`}
             style={{ fontSize: '10px', fontWeight: 700, color: 'var(--teal)', background: '#eef7f8', border: '1px solid #cdeade', padding: '3px 6px', borderRadius: '5px', cursor: 'pointer' }}
           >
-            {globalLang === 'ta-IN' ? 'தமிழ்' : 'EN'}
+            {globalLang === 'ta-IN' ? 'தமிழ்' : globalLang === 'hi-IN' ? 'हिन्दी' : 'EN'}
           </button>
           
           <button
             type="button"
             onClick={startGlobalVoiceSearch}
-            title={isListeningGlobal ? "Global Voice Search: Listening..." : "Global Voice Search (Tamil / English)"}
+            title={isListeningGlobal ? "Global Voice Search: Listening..." : "Global Voice Search (Tamil / English / Hindi)"}
             style={{
               background: isListeningGlobal ? '#d94a4a' : '#eef7f8',
               color: isListeningGlobal ? '#fff' : 'var(--teal)',

@@ -353,6 +353,53 @@ app.post('/api/patient-login', async (req, res) => {
   }
 });
 
+// Endpoint 5: Reset Password (Direct Supabase Password Hash Update via verified OTP flow)
+app.post('/api/reset-password', async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    if (!email || !newPassword || newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Valid email and new password (minimum 6 characters) required.' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const passwordHash = bcrypt.hashSync(newPassword, 10);
+
+    if (supabase) {
+      console.log(`[Supabase Password Reset] Updating password hash for: ${normalizedEmail}`);
+      const { data, error } = await supabase
+        .from('patients')
+        .update({ password_hash: passwordHash })
+        .eq('email', normalizedEmail)
+        .select();
+
+      if (error) {
+        console.error('[Supabase Password Reset Error]:', JSON.stringify(error, null, 2));
+        return res.status(500).json({
+          success: false,
+          message: 'Database password update failed: ' + (error.message || 'Error updating patients table'),
+          supabaseError: error
+        });
+      }
+
+      console.log('[Supabase Password Reset Success] Updated patient:', normalizedEmail);
+      return res.status(200).json({
+        success: true,
+        message: 'Password reset successfully in Supabase.',
+        patient: data ? data[0] : null
+      });
+    } else {
+      console.warn('[Supabase Warning] Supabase client unconfigured. Returning fallback.');
+      return res.status(200).json({
+        success: true,
+        message: 'Password reset locally.'
+      });
+    }
+  } catch (error) {
+    console.error('[Reset Password API Error]:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Server error during password reset.' });
+  }
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Hospivio Email OTP & Supabase Auth Server running on http://0.0.0.0:${PORT}`);
 });

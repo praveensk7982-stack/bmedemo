@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Hospital, Doctor, Review } from '../types';
-import { LeaveReviewModal } from '../components/modals/LeaveReviewModal';
+import { InlineReviewForm } from '../components/reviews/InlineReviewForm';
 import { 
   Building2, 
   MapPin, 
@@ -80,7 +80,8 @@ export function mapConditionToDepartment(condition: string): string {
     q.includes('fever') || q.includes('cold') || q.includes('flu') || 
     q.includes('infection') || q.includes('fatigue') || q.includes('body pain') ||
     q.includes('weakness') || q.includes('viral') || q.includes('chill') ||
-    q.includes('காய்ச்சல்') || q.includes('சளி') || q.includes('உடம்பு வலி')
+    q.includes('காய்ச்சல்') || q.includes('சளி') || q.includes('உடம்பு வலி') ||
+    q.includes('बुखार') || q.includes('सर्दी') || q.includes('शरीर का दर्द') || q.includes('संक्रमण')
   ) {
     return 'General Medicine';
   }
@@ -89,7 +90,8 @@ export function mapConditionToDepartment(condition: string): string {
   if (
     q.includes('cardio') || q.includes('heart') || q.includes('chest') || q.includes('bp') || 
     q.includes('blood pressure') || q.includes('palpitation') || q.includes('angina') ||
-    q.includes('இதயம்') || q.includes('நெஞ்சு வலி') || q.includes('இதயநோய்') || q.includes('மார்பு') || q.includes('ரத்த அழுத்தம்')
+    q.includes('இதயம்') || q.includes('நெஞ்சு வலி') || q.includes('இதயநோய்') || q.includes('மார்பு') || q.includes('ரத்த அழுத்தம்') ||
+    q.includes('दिल') || q.includes('सीने में दर्द') || q.includes('हृदय') || q.includes('बीपी')
   ) {
     return 'Cardiology';
   }
@@ -99,7 +101,8 @@ export function mapConditionToDepartment(condition: string): string {
     q.includes('neuro') || q.includes('brain') || q.includes('nerve') || q.includes('headache') || 
     q.includes('migraine') || q.includes('seizure') || q.includes('paralys') || q.includes('stroke') || 
     q.includes('fits') || q.includes('numbness') || q.includes('tremor') || q.includes('memory') ||
-    q.includes('நரம்பியல்') || q.includes('தலைவலி') || q.includes('நரம்பு') || q.includes('மூளை') || q.includes('பக்கவாதம்')
+    q.includes('நரம்பியல்') || q.includes('தலைவலி') || q.includes('நரம்பு') || q.includes('மூளை') || q.includes('பக்கவாதம்') ||
+    q.includes('सिरदर्द') || q.includes('दिमाग') || q.includes('नस') || q.includes('माइग्रेन')
   ) {
     return 'Neurology';
   }
@@ -109,7 +112,8 @@ export function mapConditionToDepartment(condition: string): string {
     q.includes('derma') || q.includes('skin') || q.includes('rash') || q.includes('acne') || 
     q.includes('itching') || q.includes('eczema') || q.includes('psoriasis') || q.includes('pimple') || 
     q.includes('boil') || q.includes('hair fall') || q.includes('தோல்') || q.includes('அரிப்பு') || 
-    q.includes('சொறி') || q.includes('படை') || q.includes('முகப்பரு')
+    q.includes('சொறி') || q.includes('படை') || q.includes('முகப்பரு') ||
+    q.includes('त्वचा') || q.includes('खुजली') || q.includes('दाने') || q.includes('मुहासे')
   ) {
     return 'Dermatology';
   }
@@ -119,7 +123,8 @@ export function mapConditionToDepartment(condition: string): string {
     q.includes('ortho') || q.includes('bone') || q.includes('joint') || q.includes('knee') || 
     q.includes('fracture') || q.includes('back pain') || q.includes('spine') || q.includes('arthritis') || 
     q.includes('leg pain') || q.includes('shoulder') || q.includes('neck pain') || q.includes('எலும்பியல்') || 
-    q.includes('மூட்டு') || q.includes('எலும்பு') || q.includes('முதுகு வலி') || q.includes('முழங்கால்')
+    q.includes('மூட்டு') || q.includes('எலும்பு') || q.includes('முதுகு வலி') || q.includes('முழங்கால்') ||
+    q.includes('हड्डी') || q.includes('जोड़ों का दर्द') || q.includes('घुटने') || q.includes('पीठ दर्द')
   ) {
     return 'Orthopedics';
   }
@@ -129,7 +134,8 @@ export function mapConditionToDepartment(condition: string): string {
     q.includes('gastro') || q.includes('stomach') || q.includes('digest') || q.includes('acidity') || 
     q.includes('liver') || q.includes('ulcer') || q.includes('vomit') || q.includes('diarrhea') || 
     q.includes('constipat') || q.includes('gut') || q.includes('heartburn') || q.includes('indigestion') || 
-    q.includes('வயிற்று நோய்') || q.includes('வயிறு') || q.includes('செரிமானம்') || q.includes('வாந்தி') || q.includes('குடல்')
+    q.includes('வயிற்று நோய்') || q.includes('வயிறு') || q.includes('செரிமானம்') || q.includes('வாந்தி') || q.includes('குடல்') ||
+    q.includes('पेट दर्द') || q.includes('पेट') || q.includes('उल्टी') || q.includes('एसिडिटी')
   ) {
     return 'Gastroenterology';
   }
@@ -138,7 +144,8 @@ export function mapConditionToDepartment(condition: string): string {
   if (
     q.includes('pulmon') || q.includes('breath') || q.includes('asthma') || q.includes('cough') || 
     q.includes('lung') || q.includes('wheez') || q.includes('respirat') || q.includes('copd') || 
-    q.includes('நுரையீரல்') || q.includes('மூச்சு') || q.includes('இருமல்') || q.includes('ஆஸ்துமா')
+    q.includes('நுரையீரல்') || q.includes('மூச்சு') || q.includes('இருமல்') || q.includes('ஆஸ்துமா') ||
+    q.includes('सांस') || q.includes('खांसी') || q.includes('फेफड़े')
   ) {
     return 'Pulmonology';
   }
@@ -148,7 +155,8 @@ export function mapConditionToDepartment(condition: string): string {
     q.includes('ent') || q.includes('ear') || q.includes('nose') || q.includes('throat') || 
     q.includes('hearing') || q.includes('sinus') || q.includes('tonsil') || q.includes('tinnitus') || 
     q.includes('nasal') || q.includes('காது மூக்கு தொண்டை') || q.includes('காது') || q.includes('மூக்கு') || 
-    q.includes('தொண்டை') || q.includes('சைனஸ்')
+    q.includes('தொண்டை') || q.includes('சைனஸ்') ||
+    q.includes('कान') || q.includes('नाक') || q.includes('गला')
   ) {
     return 'ENT';
   }
@@ -157,7 +165,8 @@ export function mapConditionToDepartment(condition: string): string {
   if (
     q.includes('ophthalm') || q.includes('eye') || q.includes('vision') || q.includes('cataract') || 
     q.includes('sight') || q.includes('glaucoma') || q.includes('blurry') || q.includes('redness') || 
-    q.includes('கண்') || q.includes('பார்வை')
+    q.includes('கண்') || q.includes('பார்வை') ||
+    q.includes('आंख') || q.includes('दृष्टि')
   ) {
     return 'Ophthalmology';
   }
@@ -167,7 +176,8 @@ export function mapConditionToDepartment(condition: string): string {
     q.includes('gynaec') || q.includes('gynec') || q.includes('women') || q.includes('pregnancy') || 
     q.includes('period') || q.includes('uterus') || q.includes('menstrua') || q.includes('matern') || 
     q.includes('pregnant') || q.includes('pcos') || q.includes('pelvic') || q.includes('மகப்பேறு') || 
-    q.includes('பெண்') || q.includes('கர்ப்பம்') || q.includes('மாதவிடாய்')
+    q.includes('பெண்') || q.includes('கர்ப்பம்') || q.includes('மாதவிடாய்') ||
+    q.includes('महिला') || q.includes('गर्भावस्था')
   ) {
     return 'Gynecology';
   }
@@ -176,7 +186,8 @@ export function mapConditionToDepartment(condition: string): string {
   if (
     q.includes('pediatr') || q.includes('paediatr') || q.includes('child') || q.includes('baby') || 
     q.includes('kid') || q.includes('infant') || q.includes('newborn') || q.includes('toddler') || 
-    q.includes('diarrhoea') || q.includes('growth') || q.includes('குழந்தை') || q.includes('பாப்பா')
+    q.includes('diarrhoea') || q.includes('growth') || q.includes('குழந்தை') || q.includes('பாப்பா') ||
+    q.includes('बच्चा') || q.includes('शिशु')
   ) {
     return 'Pediatrics';
   }
@@ -217,7 +228,8 @@ export function mapConditionToDepartment(condition: string): string {
   if (
     q.includes('dent') || q.includes('tooth') || q.includes('teeth') || q.includes('caries') || 
     q.includes('gum') || q.includes('toothache') || q.includes('cavities') || q.includes('oral') || 
-    q.includes('பல்') || q.includes('ஈறு')
+    q.includes('பல்') || q.includes('ஈறு') ||
+    q.includes('दांत')
   ) {
     return 'Dentistry';
   }
@@ -396,7 +408,7 @@ export const HospitalsPage: React.FC<HospitalsPageProps> = ({
   onOpenDoctorProfile,
   onAddPatientReview,
 }) => {
-  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showInlineReviewForm, setShowInlineReviewForm] = useState(false);
   const [selectedCity, setSelectedCity] = useState('Chennai');
   const [selectedDistance, setSelectedDistance] = useState('10 km');
   const [sortBy, setSortBy] = useState<'default' | 'wait' | 'rating' | 'distance'>('default');
@@ -414,7 +426,7 @@ export const HospitalsPage: React.FC<HospitalsPageProps> = ({
   // Voice Search State
   const [isListening, setIsListening] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
-  const [speechLang, setSpeechLang] = useState<'ta-IN' | 'en-IN'>('ta-IN');
+  const [speechLang, setSpeechLang] = useState<'ta-IN' | 'en-IN' | 'hi-IN'>('ta-IN');
 
   // Geolocation state
   const [locationStatus, setLocationStatus] = useState<string>('');
@@ -605,7 +617,7 @@ export const HospitalsPage: React.FC<HospitalsPageProps> = ({
                   Find Hospitals for Your Condition
                 </h2>
                 <div style={{ fontSize: '12px', color: 'var(--ink-2)', marginTop: '2px' }}>
-                  Speak or type a health concern in Tamil or English to find relevant departments.
+                  Speak or type a health concern in Tamil, English, or Hindi to find relevant departments.
                 </div>
               </div>
             </div>
@@ -629,6 +641,14 @@ export const HospitalsPage: React.FC<HospitalsPageProps> = ({
               >
                 English
               </button>
+              <span style={{ color: 'var(--line)' }}>|</span>
+              <button
+                type="button"
+                style={{ fontWeight: speechLang === 'hi-IN' ? 700 : 500, color: speechLang === 'hi-IN' ? 'var(--teal)' : 'var(--ink-3)', cursor: 'pointer' }}
+                onClick={() => setSpeechLang('hi-IN')}
+              >
+                हिन्दी (Hindi)
+              </button>
             </div>
           </div>
 
@@ -641,7 +661,13 @@ export const HospitalsPage: React.FC<HospitalsPageProps> = ({
                   type="text"
                   className="form-control"
                   style={{ paddingLeft: '38px', paddingRight: '48px', borderRadius: '10px', height: '42px', fontSize: '13px' }}
-                  placeholder={speechLang === 'ta-IN' ? "Enter disease (e.g. காய்ச்சல், தோல் பிரச்சனை, காது வலி, மூட்டு வலி)..." : "Enter disease or health concern... (e.g. Fever, skin problem, ear problem, joint pain)"}
+                  placeholder={
+                    speechLang === 'ta-IN'
+                      ? "Enter disease (e.g. காய்ச்சல், தோல் பிரச்சனை, காது வலி, மூட்டு வலி)..."
+                      : speechLang === 'hi-IN'
+                      ? "बीमारी दर्ज करें (जैसे बुखार, त्वचा की समस्या, कान का दर्द, जोड़ों का दर्द)..."
+                      : "Enter disease or health concern... (e.g. Fever, skin problem, ear problem, joint pain)"
+                  }
                   value={conditionInput}
                   onChange={(e) => setConditionInput(e.target.value)}
                 />
@@ -650,7 +676,7 @@ export const HospitalsPage: React.FC<HospitalsPageProps> = ({
                 <button
                   type="button"
                   onClick={startVoiceSearch}
-                  title={isListening ? "Listening... Speak now" : `Click to speak (${speechLang === 'ta-IN' ? 'Tamil' : 'English'})`}
+                  title={isListening ? "Listening... Speak now" : `Click to speak (${speechLang === 'ta-IN' ? 'Tamil' : speechLang === 'hi-IN' ? 'Hindi' : 'English'})`}
                   style={{
                     position: 'absolute',
                     right: 8,
@@ -693,7 +719,7 @@ export const HospitalsPage: React.FC<HospitalsPageProps> = ({
           {isListening && (
             <div style={{ marginTop: '10px', background: '#fdf1f1', border: '1px solid #f7d4d4', color: '#d94a4a', padding: '8px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
               <MicOff size={15} />
-              <span>Listening in <b>{speechLang === 'ta-IN' ? 'Tamil (தமிழ்)' : 'English'}</b>... Speak your health concern (e.g., "காய்ச்சல்" or "Fever").</span>
+              <span>Listening in <b>{speechLang === 'ta-IN' ? 'Tamil (தமிழ்)' : speechLang === 'hi-IN' ? 'Hindi (हिन्दी)' : 'English'}</b>... Speak your health concern (e.g., {speechLang === 'ta-IN' ? '"காய்ச்சல்"' : speechLang === 'hi-IN' ? '"बुखार"' : '"Fever"'}).</span>
             </div>
           )}
 
@@ -1076,13 +1102,29 @@ export const HospitalsPage: React.FC<HospitalsPageProps> = ({
               <button
                 type="button"
                 className="btn"
-                onClick={() => setShowReviewModal(true)}
+                onClick={() => setShowInlineReviewForm((prev) => !prev)}
                 style={{ fontSize: '11.5px', padding: '6px 12px', background: 'var(--teal)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
               >
                 <Star size={13} fill="#fff" />
-                Leave a Review
+                {showInlineReviewForm ? 'Close Review Form' : 'Leave a Review'}
               </button>
             </div>
+
+            {/* Inline Review Input Form (Accordion expand/collapse) */}
+            {showInlineReviewForm && activeHospital && (
+              <InlineReviewForm
+                targetId={activeHospital.id}
+                targetName={activeHospital.name}
+                targetType="hospital"
+                onClose={() => setShowInlineReviewForm(false)}
+                onSuccess={(newReview) => {
+                  if (onAddPatientReview) {
+                    onAddPatientReview(activeHospital.id, newReview);
+                  }
+                  setShowInlineReviewForm(false);
+                }}
+              />
+            )}
 
             {/* List of Patient Reviews */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -1130,19 +1172,6 @@ export const HospitalsPage: React.FC<HospitalsPageProps> = ({
             </div>
           </div>
         </aside>
-      )}
-
-      {/* Leave Review Modal */}
-      {showReviewModal && activeHospital && (
-        <LeaveReviewModal
-          hospital={activeHospital}
-          onClose={() => setShowReviewModal(false)}
-          onSuccess={(newReview) => {
-            if (onAddPatientReview) {
-              onAddPatientReview(activeHospital.id, newReview);
-            }
-          }}
-        />
       )}
     </div>
   );

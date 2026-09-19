@@ -9,7 +9,8 @@ import {
   getHospitalSummaryMetrics,
   ADMIN_HOSPITALS 
 } from '../lib/adminAuth';
-import type { AdminToken, AdminTokenStatus, AdminSession } from '../types';
+import type { AdminToken, AdminTokenStatus, AdminSession, Review } from '../types';
+import { INITIAL_HOSPITALS } from '../lib/mockData';
 import { 
   LogOut, 
   RefreshCw, 
@@ -520,11 +521,19 @@ export const AdminDashboardPage: React.FC = () => {
         {/* READ-ONLY PATIENT REVIEWS SECTION FOR ADMIN */}
         {(() => {
           const getActiveHospitalReviews = () => {
-            if (!session) return [];
             try {
               const raw = localStorage.getItem(`hospivio_patient_reviews_${session.hospitalId}`);
-              if (raw) return JSON.parse(raw);
+              if (raw) {
+                const parsed: Review[] = JSON.parse(raw);
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+              }
             } catch (e) {}
+
+            const activeHosp = INITIAL_HOSPITALS.find(h => h.id === session.hospitalId);
+            if (activeHosp && activeHosp.patientReviews && activeHosp.patientReviews.length > 0) {
+              return activeHosp.patientReviews;
+            }
+
             return [
               {
                 id: 'rev-mock-1',
