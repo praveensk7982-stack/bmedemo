@@ -327,8 +327,10 @@ export const LandingLoginPage: React.FC = () => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
+
     const cleanedMobile = mobileNumber.replace(/[^\d]/g, '');
     const trimmedEmail = email.trim();
+
     if (loginMethod === 'mobile') {
       if (!cleanedMobile || cleanedMobile.length < 10) {
         setErrorMessage('Please enter your 10-digit mobile phone number.');
@@ -340,11 +342,14 @@ export const LandingLoginPage: React.FC = () => {
         return;
       }
     }
+
     if (!password) {
       setErrorMessage('Please enter your password.');
       return;
     }
+
     setIsLoading(true);
+
     try {
       let loginResult: any = null;
       try {
@@ -356,15 +361,19 @@ export const LandingLoginPage: React.FC = () => {
         const matched = loginMethod === 'mobile'
           ? accounts.find(a => a.mobileNumber === cleanedMobile)
           : accounts.find(a => a.email.toLowerCase() === trimmedEmail.toLowerCase());
+
         if (!matched && trimmedEmail !== 'praveen.sk.7982@gmail.com' && trimmedEmail !== 'patient@caremesh.in') {
           throw apiErr;
         }
+
         if (matched && matched.password !== password) {
-      }
           throw new Error('Incorrect password. Please check your password and try again.');
+        }
+
         loginResult = { success: true, patient: matched };
-    }
-      const patientData = loginResult.patient || {};
+      }
+
+      const patientData = loginResult?.patient || {};
       const finalEmail = patientData.email || trimmedEmail;
       const localAccounts = getRegisteredAccounts();
       const matchedLocal = localAccounts.find(a => 
@@ -372,12 +381,16 @@ export const LandingLoginPage: React.FC = () => {
         (a.mobileNumber && cleanedMobile && a.mobileNumber === cleanedMobile)
       );
       const finalName = patientData.fullName || patientData.full_name || patientData.name || matchedLocal?.fullName || fullName.trim() || (finalEmail ? finalEmail.split('@')[0] : 'Patient User');
+
       // Background Firebase Auth login attempt
       try {
         await signInWithEmailAndPassword(auth, finalEmail, password);
       } catch (fbErr) {
         console.warn('Firebase login warning (proceeding with verified session):', fbErr);
       }
+
+      console.log('STEP: after firebase attempt');
+
       // Save patient session in sessionStorage
       sessionStorage.setItem('caremesh_patient_session', JSON.stringify({
         email: finalEmail,
@@ -386,7 +399,11 @@ export const LandingLoginPage: React.FC = () => {
         authProvider: 'supabase_bcrypt',
         loggedInAt: new Date().toISOString()
       }));
+
       setSuccessMessage('Login successful! Redirecting to Patient Dashboard...');
+
+      console.log('STEP: before navigate');
+
       setTimeout(() => {
         navigate('/hospitals');
       }, 400);
@@ -394,6 +411,7 @@ export const LandingLoginPage: React.FC = () => {
       console.error('Login Error:', error);
       setErrorMessage(error.message || mapFirebaseError(error));
     } finally {
+      console.log('STEP: setIsLoading false called');
       setIsLoading(false);
     }
   };
