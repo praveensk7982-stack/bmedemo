@@ -26,7 +26,7 @@ import {
   fetchSignInMethodsForEmail
 } from '../lib/firebase';
 // Backend API base URL
-const API_BASE_URL ='https://bmedemo.vercel.app';
+const API_BASE_URL = 'https://bmedemo.vercel.app';
 interface RegisteredAccount {
   fullName: string;
   countryCode: string;
@@ -57,9 +57,7 @@ const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutM
 // API Call Helper: Send OTP (No DB insert yet!)
 const sendOtpApiCall = async (targetEmail: string) => {
   const endpoints = [
-    '/api/send-otp',
-    `${API_BASE_URL}/api/send-otp`,
-    'http://localhost:5000/api/send-otp'
+    `${API_BASE_URL}/api/send-otp`
   ];
   let lastError: any = null;
   for (const ep of endpoints) {
@@ -91,9 +89,7 @@ const sendOtpApiCall = async (targetEmail: string) => {
 // API Call Helper: Verify OTP
 const verifyOtpApiCall = async (targetEmail: string, code: string) => {
   const endpoints = [
-    '/api/verify-otp',
-    `${API_BASE_URL}/api/verify-otp`,
-    'http://localhost:5000/api/verify-otp'
+    `${API_BASE_URL}/api/verify-otp`
   ];
   let lastError: any = null;
   for (const ep of endpoints) {
@@ -121,9 +117,7 @@ const verifyOtpApiCall = async (targetEmail: string, code: string) => {
 // API Call Helper: Register Patient in Supabase with Bcrypt Password Hash
 const registerPatientApiCall = async (fullName: string, mobileNumber: string, email: string, password: string) => {
   const endpoints = [
-    '/api/register-patient',
-    `${API_BASE_URL}/api/register-patient`,
-    'http://localhost:5000/api/register-patient'
+    `${API_BASE_URL}/api/register-patient`
   ];
   let lastError: any = null;
   for (const ep of endpoints) {
@@ -154,9 +148,7 @@ const registerPatientApiCall = async (fullName: string, mobileNumber: string, em
 // API Call Helper: Patient Login via Supabase Query & Bcrypt Password Compare
 const patientLoginApiCall = async (email: string, mobileNumber: string, password: string, loginMethod: 'mobile' | 'email') => {
   const endpoints = [
-    '/api/patient-login',
-    `${API_BASE_URL}/api/patient-login`,
-    'http://localhost:5000/api/patient-login'
+    `${API_BASE_URL}/api/patient-login`
   ];
   let lastError: any = null;
   for (const ep of endpoints) {
@@ -188,9 +180,7 @@ const patientLoginApiCall = async (email: string, mobileNumber: string, password
 // API Call Helper: Reset Password in Supabase / Backend Database
 const resetPasswordApiCall = async (email: string, newPassword: string) => {
   const endpoints = [
-    '/api/reset-password',
-    `${API_BASE_URL}/api/reset-password`,
-    'http://localhost:5000/api/reset-password'
+    `${API_BASE_URL}/api/reset-password`
   ];
   let lastError: any = null;
   for (const ep of endpoints) {
