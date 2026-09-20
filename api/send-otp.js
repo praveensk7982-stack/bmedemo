@@ -61,12 +61,14 @@ export default async function handler(req, res) {
     globalThis.otpStore = otpStore;
 
     // Optional: store in Supabase otp_store table
-    if (supabase) {
-      await supabase
-        .from('otp_store')
-        .upsert({ email: normalizedEmail, otp, expires_at: expiresAt })
-        .catch(err => console.warn('[Supabase OTP Store Warning]:', err.message));
-    }
+if (supabase) {
+  const { error: supabaseError } = await supabase
+    .from('otp_store')
+    .upsert({ email: normalizedEmail, otp, expires_at: expiresAt });
+  if (supabaseError) {
+    console.warn('[Supabase OTP Store Warning]:', supabaseError.message);
+  }
+}
 
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
