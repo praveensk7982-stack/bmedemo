@@ -366,7 +366,12 @@ export const LandingLoginPage: React.FC = () => {
     }
       const patientData = loginResult.patient || {};
       const finalEmail = patientData.email || trimmedEmail;
-      const finalName = patientData.fullName || patientData.full_name || fullName.trim() || finalEmail.split('@')[0];
+      const localAccounts = getRegisteredAccounts();
+      const matchedLocal = localAccounts.find(a => 
+        (a.email && a.email.toLowerCase() === finalEmail.toLowerCase()) || 
+        (a.mobileNumber && cleanedMobile && a.mobileNumber === cleanedMobile)
+      );
+      const finalName = patientData.fullName || patientData.full_name || patientData.name || matchedLocal?.fullName || fullName.trim() || (finalEmail ? finalEmail.split('@')[0] : 'Patient User');
       // Background Firebase Auth login attempt
       try {
         await signInWithEmailAndPassword(auth, finalEmail, password);
@@ -648,6 +653,8 @@ export const LandingLoginPage: React.FC = () => {
       }
 
       // 2. Update matching local account in localStorage (caremesh_patient_accounts)
+      let resolvedName = targetForgotOtpEmail.split('@')[0];
+      let resolvedMobile = '';
       try {
         const accounts = getRegisteredAccounts();
         const matchedIndex = accounts.findIndex(
@@ -656,6 +663,12 @@ export const LandingLoginPage: React.FC = () => {
         if (matchedIndex !== -1) {
           accounts[matchedIndex].password = newPassword;
           localStorage.setItem('caremesh_patient_accounts', JSON.stringify(accounts));
+          if (accounts[matchedIndex].fullName) {
+            resolvedName = accounts[matchedIndex].fullName;
+          }
+          if (accounts[matchedIndex].mobileNumber) {
+            resolvedMobile = accounts[matchedIndex].mobileNumber;
+          }
         }
       } catch (e) {
         console.warn('Failed to update local storage account password:', e);
@@ -664,8 +677,8 @@ export const LandingLoginPage: React.FC = () => {
       // 3. Save session to sessionStorage and log user in automatically
       sessionStorage.setItem('caremesh_patient_session', JSON.stringify({
         email: targetForgotOtpEmail,
-        mobileNumber: '',
-        name: targetForgotOtpEmail.split('@')[0],
+        mobileNumber: resolvedMobile,
+        name: resolvedName,
         authProvider: 'supabase_email_otp_password_reset',
         loggedInAt: new Date().toISOString()
       }));

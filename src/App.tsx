@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import './App.css';
 
@@ -80,6 +80,17 @@ export function AppContent() {
       phone: session.mobileNumber || INITIAL_USER_SETTINGS.phone
     };
   });
+
+  // Keep user settings synced with active patient session when switching pages/routes
+  useEffect(() => {
+    const session = getActivePatientSession();
+    setUserSettings((prev) => ({
+      ...prev,
+      name: session.name || prev.name,
+      email: session.email || prev.email,
+      phone: session.mobileNumber || prev.phone
+    }));
+  }, [location.pathname]);
 
   // Modals state
   const [bookingModalState, setBookingModalState] = useState<{
